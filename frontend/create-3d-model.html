@@ -66,42 +66,27 @@
                             </div>
                         </div>
 
-                    <!-- Product Display Images Section -->
-                    <div class="form-section">
-                        <label class="form-label">Product Display Images</label>
-                        <p class="form-hint" style="font-size: 14px; color: #666; margin-bottom: 12px;">Images that will be shown on the product page</p>
-                        <div class="upload-area" id="displayImagesArea">
-                            <input type="file" id="displayImagesInput" accept="image/*" multiple style="display: none;">
-                            <div class="upload-content">
-                                <svg class="upload-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="17 8 12 3 7 8"></polyline>
-                                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                                </svg>
-                                <p class="upload-text">Click or drag images here</p>
-                                <p class="upload-hint">These images will appear on your product listing</p>
+                        <!-- Listing Image Upload (hidden by default) -->
+                        <div class="upload-section" id="listingImageUploadSection" style="display: none;">
+                            <label class="form-label">Product Listing Image</label>
+                            <p class="upload-hint">Main image for your listing</p>
+                            <div class="file-upload-compact" id="listingFileUploadContainer">
+                                <input type="file" id="listingImageInput" accept="image/*" style="display: none;">
+                                <div class="file-upload-area" id="listingUploadArea">
+                                    <button type="button" class="file-upload-btn" id="listingUploadBtn">
+                                        <svg class="plus-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                                        </svg>
+                                        Add image
+                                    </button>
+                                    <div class="file-preview-container" id="listingFilePreviewContainer">
+                                        <p class="file-upload-placeholder" id="listingUploadPlaceholder">Drop image here or click to browse</p>
+                                    </div>
+                                </div>
+                                <div class="file-upload-errors" id="listingUploadErrors"></div>
                             </div>
                         </div>
-                        <div class="uploaded-images" id="displayImagesPreview"></div>
-                    </div>
-
-                    <!-- 3D Model Reference Images Section -->
-                    <div class="form-section">
-                        <label class="form-label">3D Model Reference Images</label>
-                        <p class="form-hint" style="font-size: 14px; color: #666; margin-bottom: 12px;">Images used to generate the 3D model (not shown on product page)</p>
-                        <div class="upload-area" id="referenceImagesArea">
-                            <input type="file" id="referenceImagesInput" accept="image/*" multiple style="display: none;">
-                            <div class="upload-content">
-                                <svg class="upload-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="17 8 12 3 7 8"></polyline>
-                                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                                </svg>
-                                <p class="upload-text">Click or drag images here</p>
-                                <p class="upload-hint">More angles will result in better model generation</p>
-                            </div>
-                        </div>
-                        <div class="uploaded-images" id="referenceImagesPreview"></div>
                     </div>
 
                     <!-- Right Side: Form -->
