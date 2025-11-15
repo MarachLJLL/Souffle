@@ -248,9 +248,11 @@ class Carousel3D {
         console.log('Carousel: Loading', uniqueFiles.length, 'unique models from', uniqueFiles);
         
         uniqueFiles.forEach((file) => {
+            console.log(`Carousel3D: Attempting to load model: ${file}`);
             loader.load(
                 file,
                 (gltf) => {
+                    console.log(`Carousel3D: Successfully loaded model: ${file}`);
                     const originalModel = gltf.scene;
                     
                     // Enable shadows on original
