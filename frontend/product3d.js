@@ -14,8 +14,8 @@ class Product3DViewer {
         this.model = null;
         
         // Get product ID to determine which model to load
-        const productId = this.getProductIdFromURL();
-        this.modelPath = this.getModelPath(productId);
+        this.productId = this.getProductIdFromURL();
+        this.modelPath = null;
         
         this.init();
     }
@@ -25,9 +25,22 @@ class Product3DViewer {
         return parseInt(params.get('id')) || 2;
     }
     
-    getModelPath(productId) {
-        // Map product IDs to 3D models
-        // Default to Chair.glb, but you can customize this mapping
+    async getModelPath(productId) {
+        // Try to load from database first
+        try {
+            const response = await fetch('../database/products.json');
+            if (response.ok) {
+                const products = await response.json();
+                const product = products.find(p => p.id === productId);
+                if (product && product.glb) {
+                    return `../database/${product.glb}`;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading product from database:', error);
+        }
+        
+        // Fallback to default models
         const modelMap = {
             1: '../assets/models/Chair.glb',
             2: '../assets/models/Chair.glb',
@@ -39,11 +52,12 @@ class Product3DViewer {
         return modelMap[productId] || '../assets/models/Chair.glb';
     }
     
-    init() {
+    async init() {
         this.setupRenderer();
         this.setupCamera();
         this.setupLights();
         this.setupControls();
+        this.modelPath = await this.getModelPath(this.productId);
         this.loadModel();
         this.animate();
         
