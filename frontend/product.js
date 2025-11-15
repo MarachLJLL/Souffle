@@ -23,10 +23,7 @@ async function loadProduct() {
         let workingPath = null;
         const paths = [
             '../database/products.json',
-            'database/products.json',
-            '/database/products.json',
-            './database/products.json',
-            '../../database/products.json'
+            'database/products.json'
         ];
         
         // Try each path
