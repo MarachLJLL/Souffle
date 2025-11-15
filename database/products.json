@@ -30,5 +30,22 @@
             "width": 15.0,
             "height": 7.5
         }
+    },
+    {
+        "id": 3,
+        "name": "Ikea Table",
+        "image_paths": [
+            "images/3_display_1.png",
+            "images/3_display_2.png"
+        ],
+        "glb": "glbs/3.glb",
+        "measurements": {
+            "length": 30.0,
+            "width": 74.0,
+            "height": 75.0
+        },
+        "price": 59.0,
+        "description": "White Ikea table",
+        "listing_image": "images/3_listing.png"
     }
 ]
