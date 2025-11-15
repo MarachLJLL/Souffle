@@ -1,32 +1,39 @@
-// Product data based on the original site with varying sizes
-// Images cycle through: vase.png, vase2.png, cat_tree.png, egg.png
-const defaultProducts = [
-    { id: 1, name: "Candle holder 04", price: 50, image: "../assets/products/vase.png", size: "normal" },
-    { id: 2, name: "Candle Holder Shadow", price: 250, image: "../assets/products/vase2.png", size: "large" },
-    { id: 3, name: "Super Combo Set 03", price: 155, image: "../assets/products/cat_tree.png", size: "wide" },
-    { id: 4, name: "Tree", price: 25, image: "../assets/products/egg.png", size: "normal" },
-    { id: 5, name: "Apple", price: 30, image: "../assets/products/vase.png", size: "normal" },
-    { id: 6, name: "Secret Garden", price: 65, image: "../assets/products/vase2.png", size: "normal" },
-    { id: 7, name: "Eggs candles set 2 pieces", price: 25, image: "../assets/products/cat_tree.png", size: "normal" },
-    { id: 8, name: "Big Pattison", price: 40, image: "../assets/products/egg.png", size: "normal" },
-    { id: 9, name: "Alchemy Of Light", price: 25, image: "../assets/products/vase.png", size: "normal" },
-    { id: 10, name: "100 hours", price: 40, image: "../assets/products/vase2.png", size: "normal" },
-    { id: 11, name: "Transparent holder", price: 90, image: "../assets/products/cat_tree.png", size: "large" },
-    { id: 12, name: "Traditional Candle", price: 25, image: "../assets/products/egg.png", size: "normal" },
-    { id: 13, name: "Amber Forest", price: 25, image: "../assets/products/vase.png", size: "normal" },
-    { id: 14, name: "Corn", price: 35, image: "../assets/products/vase2.png", size: "normal" },
-    { id: 15, name: "Patisson white", price: 40, image: "../assets/products/cat_tree.png", size: "normal" },
-    { id: 16, name: "Cauliflower", price: 30, image: "../assets/products/egg.png", size: "normal" },
-    { id: 17, name: "Eggs Candles Set 4 pieces", price: 35, image: "../assets/products/vase.png", size: "normal" },
-    { id: 18, name: "Blossom", price: 65, image: "../assets/products/vase2.png", size: "normal" },
-    { id: 19, name: "Wildflower", price: 65, image: "../assets/products/cat_tree.png", size: "normal" },
-    { id: 20, name: "Magic Night", price: 25, image: "../assets/products/egg.png", size: "normal" },
-    { id: 21, name: "Magnolia", price: 25, image: "../assets/products/vase.png", size: "normal" },
-    { id: 22, name: "Wick scissors", price: 17, image: "../assets/products/vase2.png", size: "normal" }
-];
+// Load products from database
+async function loadProductsFromDatabase() {
+    try {
+        const response = await fetch('../database/products.json');
+        if (!response.ok) {
+            throw new Error('Failed to load products');
+        }
+        const dbProducts = await response.json();
+        
+        // Convert database products to our format
+        return dbProducts.map(product => ({
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            description: product.description,
+            glb: `../database/${product.glb}`, // Path to GLB file
+            image: product.image_paths && product.image_paths.length > 0 
+                ? `../database/${product.image_paths[0]}` // Use first JPG image for marketplace
+                : null,
+            images: product.image_paths ? product.image_paths.map(img => `../database/${img}`) : [],
+            measurements: product.measurements,
+            specs: product.measurements ? [
+                `LENGTH: ${product.measurements.length} CM`,
+                `WIDTH: ${product.measurements.width} CM`,
+                `HEIGHT: ${product.measurements.height} CM`
+            ] : []
+        }));
+    } catch (error) {
+        console.error('Error loading products from database:', error);
+        return [];
+    }
+}
 
-// Load listings from localStorage and merge with default products
-function loadProducts() {
+// Load listings from localStorage and merge with database products
+async function loadProducts() {
+    const dbProducts = await loadProductsFromDatabase();
     const savedListings = JSON.parse(localStorage.getItem('souffle_listings') || '[]');
     
     // Convert listings to product format (with base64 images)
@@ -34,27 +41,33 @@ function loadProducts() {
         id: listing.id,
         name: listing.name,
         price: listing.price,
-        image: listing.image, // base64 image
+        glb: listing.glb || null, // GLB path if available
+        image: listing.image, // base64 image for fallback
         size: "normal",
-        isListing: true, // Flag to identify user-created listings
+        isListing: true,
         description: listing.description,
-        dimensions: listing.dimensions
+        dimensions: listing.dimensions,
+        specs: listing.dimensions ? [
+            `LENGTH: ${listing.dimensions.length} CM`,
+            `WIDTH: ${listing.dimensions.width} CM`,
+            `HEIGHT: ${listing.dimensions.height} CM`
+        ] : []
     }));
     
-    // Combine default products with listings
-    return [...defaultProducts, ...listingProducts];
+    // Combine database products with listings
+    return [...dbProducts, ...listingProducts];
 }
 
-// Initialize products array
-let products = loadProducts();
+// Initialize products array (will be populated asynchronously)
+let products = [];
 
 // Cart state
 let cart = [];
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    // Reload products from localStorage (in case new listings were added)
-    products = loadProducts();
+document.addEventListener('DOMContentLoaded', async () => {
+    // Load products from database
+    products = await loadProducts();
     renderProducts();
     loadCart();
     updateCartUI();
@@ -75,15 +88,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Render products
+// Render products with 3D GLB previews
 function renderProducts() {
     const grid = document.getElementById('productsGrid');
     if (!grid) return; // Product page doesn't have this element
     
-    grid.innerHTML = products.map(product => `
+    grid.innerHTML = products.map((product, index) => `
         <a href="product.html?id=${product.id}" class="product-item">
             <div class="product-image-wrapper">
-                <img src="${product.image}" alt="${product.name}" onerror="this.style.display='none'">
+                ${product.glb 
+                    ? `<div id="product-preview-${product.id}"></div>`
+                    : product.image
+                        ? `<img src="${product.image}" alt="${product.name}" onerror="this.style.display='none'">`
+                        : '<div style="background: #f5f5f5; width: 100%; aspect-ratio: 1;"></div>'
+                }
             </div>
             <div class="product-info-overlay">
                 <span class="product-name">${product.name}</span>
@@ -91,6 +109,28 @@ function renderProducts() {
             </div>
         </a>
     `).join('');
+    
+    // Initialize 3D previews for all products with GLB files
+    // Use requestAnimationFrame to ensure DOM is ready and layout is calculated
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            products.forEach(product => {
+                if (product.glb) {
+                    initProductPreview(product.id, product.glb);
+                }
+            });
+        }, 200);
+    });
+}
+
+// Initialize 3D preview for a product
+async function initProductPreview(productId, glbPath) {
+    try {
+        const { initProductPreview: initPreview } = await import('./productPreview3d.js');
+        initPreview(productId, glbPath);
+    } catch (error) {
+        console.error('Error loading 3D preview module:', error);
+    }
 }
 
 // Cart functions

@@ -1,12 +1,12 @@
 [
     {
         "id": 1,
-        "name": "Product A",
+        "name": "Luis Chair",
         "price": 29.99,
-        "description": "A great product A",
+        "description": "A great chair",
         "image_paths": [
-            "images/product_1_1.jpg",
-            "images/product_1_2.jpg"
+            "images/1_1.jpg",
+            "images/1_2.jpg"
         ],
         "glb": "glbs/1.glb",
         "measurements": {
@@ -17,12 +17,12 @@
     },
     {
         "id": 2,
-        "name": "Product B",
+        "name": "Redpath Chair",
         "price": 49.99,
-        "description": "An awesome product B",
+        "description": "An awesome chair",
         "image_paths": [
-            "images/product_2_1.jpg",
-            "images/product_2_2.jpg"
+            "images/2_1.jpg",
+            "images/2_2.jpg"
         ],
         "glb": "glbs/2.glb",
         "measurements": {

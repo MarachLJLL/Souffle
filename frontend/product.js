@@ -1,32 +1,6 @@
 // Product page functionality
-// Make sure products array is available (from script.js)
-if (typeof products === 'undefined') {
-    // Fallback product data if script.js isn't loaded
-    var products = [
-        { id: 1, name: "Candle holder 04", price: 50, image: "../assets/products/vase.png", size: "normal" },
-        { id: 2, name: "Candle Holder Shadow", price: 250, image: "../assets/products/vase2.png", size: "large" },
-        { id: 3, name: "Super Combo Set 03", price: 155, image: "../assets/products/cat_tree.png", size: "wide" },
-        { id: 4, name: "Tree", price: 25, image: "../assets/products/egg.png", size: "normal" },
-        { id: 5, name: "Apple", price: 30, image: "../assets/products/vase.png", size: "normal" },
-        { id: 6, name: "Secret Garden", price: 65, image: "../assets/products/vase2.png", size: "normal" },
-        { id: 7, name: "Eggs candles set 2 pieces", price: 25, image: "../assets/products/cat_tree.png", size: "normal" },
-        { id: 8, name: "Big Pattison", price: 40, image: "../assets/products/egg.png", size: "normal" },
-        { id: 9, name: "Alchemy Of Light", price: 25, image: "../assets/products/vase.png", size: "normal" },
-        { id: 10, name: "100 hours", price: 40, image: "../assets/products/vase2.png", size: "normal" },
-        { id: 11, name: "Transparent holder", price: 90, image: "../assets/products/cat_tree.png", size: "large" },
-        { id: 12, name: "Traditional Candle", price: 25, image: "../assets/products/egg.png", size: "normal" },
-        { id: 13, name: "Amber Forest", price: 25, image: "../assets/products/vase.png", size: "normal" },
-        { id: 14, name: "Corn", price: 35, image: "../assets/products/vase2.png", size: "normal" },
-        { id: 15, name: "Patisson white", price: 40, image: "../assets/products/cat_tree.png", size: "normal" },
-        { id: 16, name: "Cauliflower", price: 30, image: "../assets/products/egg.png", size: "normal" },
-        { id: 17, name: "Eggs Candles Set 4 pieces", price: 35, image: "../assets/products/vase.png", size: "normal" },
-        { id: 18, name: "Blossom", price: 65, image: "../assets/products/vase2.png", size: "normal" },
-        { id: 19, name: "Wildflower", price: 65, image: "../assets/products/cat_tree.png", size: "normal" },
-        { id: 20, name: "Magic Night", price: 25, image: "../assets/products/egg.png", size: "normal" },
-        { id: 21, name: "Magnolia", price: 25, image: "../assets/products/vase.png", size: "normal" },
-        { id: 22, name: "Wick scissors", price: 17, image: "../assets/products/vase2.png", size: "normal" }
-    ];
-}
+// Note: products array may be available from script.js, but we load directly from database
+// so we don't need to declare it here
 
 let currentProduct = null;
 let quantity = 1;
@@ -37,69 +11,171 @@ function getProductIdFromURL() {
     return parseInt(params.get('id')) || 2; // Default to product ID 2 (Candle Holder Shadow)
 }
 
-// Load product data
-function loadProduct() {
+// Load product data from database
+async function loadProduct() {
     const productId = getProductIdFromURL();
-    currentProduct = products.find(p => p.id === productId);
+    console.log('Loading product with ID:', productId);
     
-    if (!currentProduct) {
-        // Default product if not found
-        currentProduct = {
-            id: 2,
-            name: "Candle Holder Shadow",
-            price: 250,
-            image: "../assets/products/vase2.png",
-            images: [
-                "../assets/products/vase2.png",
-                "../assets/products/vase.png",
-                "../assets/products/cat_tree.png"
-            ],
-            specs: [
-                "CANDLE HOLDER MADE OF ANODIZED ALUMINUM",
-                "IT COMES WITH WAX REMOVER",
-                "IT FITS FOR MODEL A Ø 17 ММ CANDLE",
-                "SIZE, MM: 207 х 245",
-                "DESIGNED AND MANUFACTURED IN KYIV"
-            ],
-            concept: "This candle holder is like a blank canvas, where candles tell colorful stories. As the wax melts, it leaves unique traces, forming a mosaic of colors. With each passing moment, the candle changes shape, creating a new picture and bringing peace and beauty to the space"
-        };
-    }
-
-    // Set default images if not provided
-    if (!currentProduct.images) {
-        currentProduct.images = [
-            currentProduct.image,
-            "../assets/products/vase.png",
-            "../assets/products/cat_tree.png"
+    // Try to load from database first
+    try {
+        // Determine base path - try different possible paths
+        let response = null;
+        let workingPath = null;
+        const paths = [
+            '../database/products.json',
+            'database/products.json',
+            '/database/products.json',
+            './database/products.json',
+            '../../database/products.json'
         ];
+        
+        // Try each path
+        for (const path of paths) {
+            try {
+                const testResponse = await fetch(path);
+                if (testResponse.ok) {
+                    const contentType = testResponse.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        response = testResponse;
+                        workingPath = path;
+                        console.log('Successfully loaded from:', path);
+                        break;
+                    }
+                }
+            } catch (e) {
+                console.log('Failed to load from:', path, e.message);
+                continue;
+            }
+        }
+        
+        if (!response || !response.ok) {
+            throw new Error(`HTTP error! Could not load products.json from any path. Make sure you're serving the files from a web server.`);
+        }
+        
+        const dbProducts = await response.json();
+        console.log('Loaded products from database:', dbProducts);
+        
+        if (!Array.isArray(dbProducts)) {
+            throw new Error('Invalid products.json format - expected an array');
+        }
+        
+        const dbProduct = dbProducts.find(p => p.id === productId);
+        console.log('Found product:', dbProduct);
+        
+        if (dbProduct) {
+            // Build specs from product data
+            const specs = [];
+            
+            // Add description
+            if (dbProduct.description) {
+                specs.push(`<strong>${dbProduct.description}</strong>`);
+            }
+            
+            // Add measurements if available
+            if (dbProduct.measurements) {
+                specs.push(`<strong>SIZE, CM:</strong> ${dbProduct.measurements.length} x ${dbProduct.measurements.width} x ${dbProduct.measurements.height}`);
+            }
+            
+            // Get first image for cart display
+            const firstImage = dbProduct.image_paths && dbProduct.image_paths.length > 0 
+                ? `../database/${dbProduct.image_paths[0]}` 
+                : null;
+            
+            currentProduct = {
+                id: dbProduct.id,
+                name: dbProduct.name || 'Product',
+                price: dbProduct.price || 0,
+                description: dbProduct.description || '',
+                glb: dbProduct.glb ? `../database/${dbProduct.glb}` : '',
+                measurements: dbProduct.measurements || null,
+                specs: specs,
+                image_paths: dbProduct.image_paths ? dbProduct.image_paths.map(path => `../database/${path}`) : [],
+                image: firstImage // Add image property for cart display
+            };
+            
+            console.log('Current product set:', currentProduct);
+            renderProduct();
+            return;
+        } else {
+            console.warn(`Product with ID ${productId} not found in database. Available IDs:`, dbProducts.map(p => p.id));
+            throw new Error(`Product with ID ${productId} not found`);
+        }
+    } catch (error) {
+        console.error('Error loading product from database:', error);
+        
+        // Show detailed error to user
+        const titleEl = document.getElementById('productTitle');
+        if (titleEl) {
+            titleEl.textContent = 'Error loading product';
+        }
+        const priceEl = document.getElementById('productPrice');
+        if (priceEl) {
+            priceEl.textContent = '0 $';
+        }
+        const specsEl = document.getElementById('productSpecs');
+        if (specsEl) {
+            specsEl.innerHTML = `<p style="color: red;">Error: ${error.message}</p><p>Check browser console for details.</p>`;
+        }
+        return;
     }
-
-    renderProduct();
-    loadRelatedProducts();
 }
 
 // Render product details
 function renderProduct() {
-    if (!currentProduct) return;
+    if (!currentProduct) {
+        console.error('No current product to render');
+        // Show error message
+        const titleEl = document.getElementById('productTitle');
+        if (titleEl) titleEl.textContent = 'Product not found';
+        const priceEl = document.getElementById('productPrice');
+        if (priceEl) priceEl.textContent = '0 $';
+        const specsEl = document.getElementById('productSpecs');
+        if (specsEl) specsEl.innerHTML = '<p>Product information not available.</p>';
+        return;
+    }
 
-    // Update title
-    document.getElementById('productTitle').textContent = currentProduct.name;
-    
-    // Update price
-    document.getElementById('productPrice').textContent = `${currentProduct.price} $`;
-    
-    // Update specs
-    const specsEl = document.getElementById('productSpecs');
-    if (currentProduct.specs) {
-        specsEl.innerHTML = currentProduct.specs.map(spec => 
-            `<p><strong>${spec}</strong></p>`
-        ).join('');
+    console.log('Rendering product:', currentProduct);
+
+    // Update title with product name
+    const titleEl = document.getElementById('productTitle');
+    if (titleEl) {
+        titleEl.textContent = currentProduct.name || 'Product';
+    } else {
+        console.error('Product title element not found');
     }
     
-    // Update concept
-    const conceptEl = document.getElementById('productConcept');
-    if (currentProduct.concept) {
-        conceptEl.querySelector('p').textContent = currentProduct.concept;
+    // Update price
+    const priceEl = document.getElementById('productPrice');
+    if (priceEl) {
+        const price = currentProduct.price || 0;
+        priceEl.textContent = `${price.toFixed(2)} $`;
+    } else {
+        console.error('Product price element not found');
+    }
+    
+    // Update specs - display description and measurements
+    const specsEl = document.getElementById('productSpecs');
+    if (specsEl) {
+        const specsHTML = [];
+        
+        // Add description if available
+        if (currentProduct.description) {
+            specsHTML.push(`<p><strong>${currentProduct.description}</strong></p>`);
+        }
+        
+        // Add measurements if available
+        if (currentProduct.measurements) {
+            const m = currentProduct.measurements;
+            specsHTML.push(`<p><strong>SIZE, CM:</strong> ${m.length} x ${m.width} x ${m.height}</p>`);
+        }
+        
+        if (specsHTML.length > 0) {
+            specsEl.innerHTML = specsHTML.join('');
+        } else {
+            specsEl.innerHTML = '<p>Product specifications not available.</p>';
+        }
+    } else {
+        console.error('Product specs element not found');
     }
     
     // Update quantity label
@@ -108,7 +184,7 @@ function renderProduct() {
         quantityLabel.textContent = `${currentProduct.name} quantity`;
     }
     
-    // Render gallery
+    // Render gallery if needed
     renderGallery();
 }
 
@@ -189,7 +265,21 @@ function setupAddToCart() {
         // Ensure cart is initialized
         if (typeof cart === 'undefined') {
             cart = [];
-            loadCart();
+            // Try to load cart if function exists
+            if (typeof loadCart === 'function') {
+                loadCart();
+            } else {
+                // Fallback: load from localStorage directly
+                const savedCart = localStorage.getItem('souffle_cart');
+                if (savedCart) {
+                    try {
+                        cart = JSON.parse(savedCart);
+                    } catch (e) {
+                        console.error('Error parsing cart from localStorage:', e);
+                        cart = [];
+                    }
+                }
+            }
         }
         
         // Add product to cart with quantity
@@ -197,18 +287,29 @@ function setupAddToCart() {
             cart.push({ ...currentProduct, cartId: Date.now() + i });
         }
         
+        // Save cart to localStorage
         if (typeof saveCart === 'function') {
             saveCart();
         } else {
             localStorage.setItem('souffle_cart', JSON.stringify(cart));
         }
         
+        // Update cart UI (both count and sidebar if open)
         if (typeof updateCartUI === 'function') {
             updateCartUI();
         } else {
+            // Fallback: manually update cart count
             const cartCount = document.getElementById('cartCount');
             if (cartCount) {
                 cartCount.textContent = cart.length;
+            }
+        }
+        
+        // Update cart sidebar if it's open
+        const cartSidebar = document.getElementById('cartSidebar');
+        if (cartSidebar && cartSidebar.classList.contains('active')) {
+            if (typeof renderCartItems === 'function') {
+                renderCartItems();
             }
         }
         
@@ -251,30 +352,83 @@ function loadRelatedProducts() {
 }
 
 // Initialize product page
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('Product page initialized');
+    console.log('Current URL:', window.location.href);
+    console.log('Product ID from URL:', getProductIdFromURL());
+    
     // Initialize cart if not already done
     if (typeof cart === 'undefined') {
         cart = [];
-        const savedCart = localStorage.getItem('souffle_cart');
-        if (savedCart) {
-            cart = JSON.parse(savedCart);
+        // Try to load cart using loadCart function if available
+        if (typeof loadCart === 'function') {
+            loadCart();
+        } else {
+            // Fallback: load from localStorage directly
+            const savedCart = localStorage.getItem('souffle_cart');
+            if (savedCart) {
+                try {
+                    cart = JSON.parse(savedCart);
+                } catch (e) {
+                    console.error('Error parsing cart from localStorage:', e);
+                    cart = [];
+                }
+            }
         }
     }
     
     // Update cart UI
-    const cartCount = document.getElementById('cartCount');
-    if (cartCount) {
-        cartCount.textContent = cart.length;
+    if (typeof updateCartUI === 'function') {
+        updateCartUI();
+    } else {
+        // Fallback: manually update cart count
+        const cartCount = document.getElementById('cartCount');
+        if (cartCount) {
+            cartCount.textContent = cart.length;
+        }
     }
     
-    loadProduct();
+    // Check if we're using file:// protocol (which causes CORS issues)
+    if (window.location.protocol === 'file:') {
+        const specsEl = document.getElementById('productSpecs');
+        if (specsEl) {
+            specsEl.innerHTML = `
+                <p style="color: red; font-weight: bold;">⚠️ CORS Error</p>
+                <p>You're opening this file directly from your file system, which prevents loading JSON files.</p>
+                <p><strong>Solution:</strong> Serve the files from a web server.</p>
+                <p>You can use Python: <code>cd frontend && python -m http.server 8000</code></p>
+                <p>Then open: <code>http://localhost:8000/product.html?id=1</code></p>
+            `;
+        }
+        const titleEl = document.getElementById('productTitle');
+        if (titleEl) titleEl.textContent = 'CORS Error - Use a Web Server';
+        return;
+    }
+    
+    // Show loading message immediately
+    const titleEl = document.getElementById('productTitle');
+    if (titleEl && titleEl.textContent === 'Loading...') {
+        // Keep loading message
+    }
+    
+    // Load product directly from database (don't wait for script.js products array)
+    try {
+        await loadProduct();
+    } catch (error) {
+        console.error('Failed to load product:', error);
+        const titleEl = document.getElementById('productTitle');
+        if (titleEl) titleEl.textContent = 'Error loading product';
+    }
+    
     setupQuantityControls();
     setupAddToCart();
     
     // Cart toggle functions
-    function toggleCart() {
+    function toggleCart(e) {
+        if (e) e.preventDefault();
         const sidebar = document.getElementById('cartSidebar');
         const overlay = document.getElementById('cartOverlay');
+        console.log('toggleCart called', sidebar, overlay);
         if (sidebar && overlay) {
             sidebar.classList.toggle('active');
             overlay.classList.toggle('active');
@@ -282,8 +436,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (sidebar.classList.contains('active')) {
                 renderCartItems();
             }
+        } else {
+            console.error('Cart elements not found:', { sidebar, overlay });
         }
     }
+    
+    // Make toggleCart globally available to override script.js version
+    window.toggleCart = toggleCart;
     
     function renderCartItems() {
         const cartItems = document.getElementById('cartItems');
@@ -294,16 +453,23 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        cartItems.innerHTML = cart.map(item => `
+        cartItems.innerHTML = cart.map(item => {
+            // Use image property or first image from image_paths array
+            const imageUrl = item.image || (item.image_paths && item.image_paths.length > 0 ? item.image_paths[0] : null);
+            const displayName = item.name || 'Product';
+            const displayPrice = (item.price || 0).toFixed(2);
+            
+            return `
             <div class="cart-item">
-                <img src="${item.image}" alt="${item.name}" class="cart-item-image" onerror="this.style.display='none'">
+                ${imageUrl ? `<img src="${imageUrl}" alt="${displayName}" class="cart-item-image" onerror="this.style.display='none'">` : '<div class="cart-item-image" style="background: #f5f5f5;"></div>'}
                 <div class="cart-item-info">
-                    <div class="cart-item-name">${item.name}</div>
-                    <div class="cart-item-price">$${item.price}</div>
+                    <div class="cart-item-name">${displayName}</div>
+                    <div class="cart-item-price">$${displayPrice}</div>
                     <button class="cart-item-remove" onclick="removeFromCart(${item.cartId})">Remove</button>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
 
         // Update total
         const total = cart.reduce((sum, item) => sum + item.price, 0);
@@ -316,22 +482,64 @@ document.addEventListener('DOMContentLoaded', () => {
     // Make removeFromCart available globally
     window.removeFromCart = function(cartId) {
         cart = cart.filter(item => item.cartId !== cartId);
-        localStorage.setItem('souffle_cart', JSON.stringify(cart));
-        const cartCount = document.getElementById('cartCount');
-        if (cartCount) {
-            cartCount.textContent = cart.length;
+        
+        // Save cart to localStorage
+        if (typeof saveCart === 'function') {
+            saveCart();
+        } else {
+            localStorage.setItem('souffle_cart', JSON.stringify(cart));
         }
+        
+        // Update cart UI
+        if (typeof updateCartUI === 'function') {
+            updateCartUI();
+        } else {
+            const cartCount = document.getElementById('cartCount');
+            if (cartCount) {
+                cartCount.textContent = cart.length;
+            }
+        }
+        
+        // Re-render cart items
         renderCartItems();
     };
     
-    // Cart toggle
+    // Cart toggle - ensure we override script.js listeners and use our version
     const cartBtn = document.getElementById('cartBtn');
     const closeCart = document.getElementById('closeCart');
     const cartOverlay = document.getElementById('cartOverlay');
     
-    if (cartBtn) cartBtn.addEventListener('click', toggleCart);
-    if (closeCart) closeCart.addEventListener('click', toggleCart);
-    if (cartOverlay) cartOverlay.addEventListener('click', toggleCart);
+    console.log('Setting up cart listeners:', { cartBtn, closeCart, cartOverlay });
+    
+    // Use our toggleCart function - override any existing listeners
+    if (cartBtn) {
+        // Remove old listeners by replacing with new handler
+        cartBtn.onclick = null;
+        cartBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Cart button clicked');
+            toggleCart(e);
+        }, true); // Use capture phase to ensure it runs first
+    }
+    
+    if (closeCart) {
+        closeCart.onclick = null;
+        closeCart.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleCart(e);
+        }, true);
+    }
+    
+    if (cartOverlay) {
+        cartOverlay.onclick = null;
+        cartOverlay.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleCart(e);
+        }, true);
+    }
     
     // Header shadow on scroll
     const header = document.querySelector('.header');
