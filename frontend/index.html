@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soufflé</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <h1 class="logo">Soufflé</h1>
+                <nav class="nav">
+                    <a href="#" class="nav-link">3D space</a>
+                    <a href="#" class="nav-link">Marketplace</a>
+                    <a href="#" class="nav-link">Create listing</a>
+                    <button class="cart-btn" id="cartBtn">
+                        <span>CART</span>
+                        <span class="cart-count" id="cartCount">0</span>
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- 3D Product Carousel -->
+    <section class="carousel-section">
+        <div class="carousel-container" id="carousel3D"></div>
+        <div class="carousel-controls">
+            <button class="carousel-btn prev-btn" id="prevBtn">←</button>
+            <div class="carousel-indicators" id="carouselIndicators"></div>
+            <button class="carousel-btn next-btn" id="nextBtn">→</button>
+        </div>
+    </section>
+
+    <main class="main">
+        <div class="container">
+            <div class="products-grid" id="productsGrid">
+                <!-- Products will be loaded here -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Cart Sidebar -->
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-header">
+            <h2>CART</h2>
+            <button class="close-btn" id="closeCart">×</button>
+        </div>
+        <div class="cart-items" id="cartItems">
+            <!-- Cart items will be loaded here -->
+        </div>
+        <div class="cart-footer">
+            <div class="cart-total">
+                <span>Total: $<span id="cartTotal">0</span></span>
+            </div>
+            <button class="checkout-btn">Checkout</button>
+        </div>
+    </div>
+
+    <div class="cart-overlay" id="cartOverlay"></div>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="#" class="footer-link">Contact</a>
+                    <a href="#" class="footer-link">Shipping</a>
+                    <a href="#" class="footer-link">Payments</a>
+                    <a href="#" class="footer-link">Privacy policy</a>
+                </div>
+                <span class="copyright">©2025 Soufflé. All rights reserved.</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Three.js -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="carousel3d.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
