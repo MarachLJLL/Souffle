@@ -116,7 +116,11 @@ export function initProductPreview(productId, glbPath) {
         });
         resizeObserver.observe(container);
     }, undefined, (error) => {
-        console.error('Error loading 3D preview:', error);
+        console.warn('3D preview not available for product:', productId, error.message);
+        // Show a placeholder or hide the container gracefully
+        if (container) {
+            container.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #999; font-size: 14px;">3D Preview Unavailable</div>';
+        }
     });
 }
 
