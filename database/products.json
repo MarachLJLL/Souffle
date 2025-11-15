@@ -47,5 +47,23 @@
         "price": 59.0,
         "description": "White Ikea table",
         "listing_image": "images/3_listing.png"
+    },
+    {
+        "id": 4,
+        "name": "Structube Sofa",
+        "image_paths": [
+            "images/4_display_1.webp",
+            "images/4_display_2.webp",
+            "images/4_display_3.webp"
+        ],
+        "glb": "glbs/4.glb",
+        "measurements": {
+            "length": 118.0,
+            "width": 53.0,
+            "height": 75.0
+        },
+        "price": 139.0,
+        "description": "White Structure sofa",
+        "listing_image": "images/4_listing.webp"
     }
 ]
