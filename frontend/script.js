@@ -53,8 +53,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // Render products
 function renderProducts() {
     const grid = document.getElementById('productsGrid');
+    if (!grid) return; // Product page doesn't have this element
+    
     grid.innerHTML = products.map(product => `
-        <div class="product-item" onclick="addToCart(${product.id})">
+        <a href="product.html?id=${product.id}" class="product-item">
             <div class="product-image-wrapper">
                 <img src="${product.image}" alt="${product.name}" onerror="this.style.display='none'">
             </div>
@@ -62,7 +64,7 @@ function renderProducts() {
                 <span class="product-name">${product.name}</span>
                 <span class="product-price">$${product.price}</span>
             </div>
-        </div>
+        </a>
     `).join('');
 }
 

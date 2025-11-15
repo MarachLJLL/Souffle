@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product - Soufflé</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="index.html" class="logo">Soufflé</a>
+                <nav class="nav">
+                    <a href="index.html" class="nav-link">3D space</a>
+                    <a href="index.html" class="nav-link">Marketplace</a>
+                    <a href="#" class="nav-link">Create listing</a>
+                    <button class="cart-btn" id="cartBtn">
+                        <span>CART</span>
+                        <span class="cart-count" id="cartCount">0</span>
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="product-main">
+        <div class="product-container">
+            <!-- Product 3D Viewer -->
+            <div class="product-gallery">
+                <div class="gallery-main" id="product3DViewer">
+                    <!-- 3D model will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Product Details -->
+            <div class="product-details">
+                <div class="product-info-card">
+                    <h1 class="product-title" id="productTitle">Candle Holder Shadow</h1>
+                    
+                    <div class="product-specs" id="productSpecs">
+                        <p><strong>CANDLE HOLDER MADE OF ANODIZED ALUMINUM</strong></p>
+                        <p><strong>IT COMES WITH WAX REMOVER</strong></p>
+                        <p><strong>IT FITS</strong> FOR MODEL A Ø 17 ММ CANDLE</p>
+                        <p><strong>SIZE, MM:</strong> 207 х 245</p>
+                    </div>
+                </div>
+
+                <div class="product-3d-space-card">
+                    <p class="view-in-space-text">View it in your space</p>
+                    <button class="add-to-3d-space-btn" id="addTo3DSpaceBtn">ADD TO 3D SPACE</button>
+                </div>
+
+                <div class="product-purchase-card">
+                    <div class="product-purchase-row">
+                        <div class="quantity-controls">
+                            <button class="quantity-btn" id="decreaseQty">−</button>
+                            <input type="number" id="quantity" value="1" min="1" readonly>
+                            <button class="quantity-btn" id="increaseQty">+</button>
+                        </div>
+                        <div class="product-price-section">
+                            <span class="product-price-large" id="productPrice">250 $</span>
+                        </div>
+                    </div>
+                    <button class="add-to-cart-btn" id="addToCartBtn">ADD TO CART</button>
+                    <div class="payment-info">
+                        <div class="payment-item">
+                            <svg class="payment-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="1" y="4" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+                                <line x1="1" y1="7" x2="15" y2="7" stroke="currentColor" stroke-width="1.5"/>
+                            </svg>
+                            <span>Pay with credit card</span>
+                            <!-- <div class="payment-logos">
+                                <span class="visa-logo">VISA</span>
+                                <span class="mastercard-logo">MC</span>
+                            </div> -->
+                        </div>
+                        <div class="payment-item">
+                            <svg class="payment-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M8 2C6.5 4 5 6 5 8C5 10 6.5 12 8 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <path d="M8 2C9.5 4 11 6 11 8C11 10 9.5 12 8 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            <span>Worldwide shipping</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Cart Sidebar -->
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-header">
+            <h2>CART</h2>
+            <button class="close-btn" id="closeCart">×</button>
+        </div>
+        <div class="cart-items" id="cartItems">
+            <!-- Cart items will be loaded here -->
+        </div>
+        <div class="cart-footer">
+            <div class="cart-total">
+                <span>Total: $<span id="cartTotal">0</span></span>
+            </div>
+            <button class="checkout-btn">Checkout</button>
+        </div>
+    </div>
+
+    <div class="cart-overlay" id="cartOverlay"></div>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="#" class="footer-link">Contact</a>
+                    <a href="#" class="footer-link">Shipping</a>
+                    <a href="#" class="footer-link">Payments</a>
+                    <a href="#" class="footer-link">Privacy policy</a>
+                </div>
+                <span class="copyright">©2025 Soufflé. All rights reserved.</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Three.js -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="product3d.js"></script>
+    <script src="script.js"></script>
+    <script src="product.js"></script>
+</body>
+</html>
+
