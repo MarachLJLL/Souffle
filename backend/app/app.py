@@ -16,10 +16,18 @@ CORS(app)
 
 # --- Directory Setup ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(BASE_DIR))
 JOBS_DIR = os.path.join(BASE_DIR, 'jobs')
 MODELS_DIR = os.path.join(BASE_DIR, 'models')
+DATABASE_DIR = os.path.join(PROJECT_ROOT, 'database')
+IMAGES_DIR = os.path.join(DATABASE_DIR, 'images')
+GLBS_DIR = os.path.join(DATABASE_DIR, 'glbs')
+PRODUCTS_JSON = os.path.join(DATABASE_DIR, 'products.json')
+
 os.makedirs(JOBS_DIR, exist_ok=True)
 os.makedirs(MODELS_DIR, exist_ok=True)
+os.makedirs(IMAGES_DIR, exist_ok=True)
+os.makedirs(GLBS_DIR, exist_ok=True)
 
 # --- Job Management ---
 
@@ -38,9 +46,13 @@ def start_polling_thread(job_data):
     json_path = os.path.join(JOBS_DIR, f"{local_id}.json")
     glb_save_path = os.path.join(MODELS_DIR, f"{local_id}.glb")
     
+    # Use database/glbs path if this is a product job
+    if job_data.get('is_product'):
+        glb_save_path = os.path.join(GLBS_DIR, f"{job_data.get('product_id', local_id)}.glb")
+    
     thread = threading.Thread(
         target=poll_and_update_job_status,
-        args=(meshy_task_id, json_path, glb_save_path)
+        args=(meshy_task_id, json_path, glb_save_path, job_data.get('is_product'), job_data.get('product_id'))
     )
     thread.daemon = True
     thread.start()
@@ -52,10 +64,13 @@ def revive_pending_jobs():
     for filename in os.listdir(JOBS_DIR):
         if filename.endswith('.json'):
             json_path = os.path.join(JOBS_DIR, filename)
-            with open(json_path, 'r') as f:
-                job_data = json.load(f)
-                if job_data.get('status') == 'PENDING':
-                    start_polling_thread(job_data)
+            try:
+                with open(json_path, 'r') as f:
+                    job_data = json.load(f)
+                    if job_data.get('status') == 'PENDING':
+                        start_polling_thread(job_data)
+            except Exception as e:
+                print(f"Error reading job file {filename}: {e}")
     print("--- Revival process complete. ---")
 
 
@@ -122,6 +137,164 @@ def download_file(job_id):
         )
     except FileNotFoundError:
         return jsonify({"error": "File not found."}), 404
+
+def get_next_product_id():
+    """Gets the next available product ID from products.json."""
+    try:
+        if os.path.exists(PRODUCTS_JSON):
+            with open(PRODUCTS_JSON, 'r') as f:
+                products = json.load(f)
+                if products:
+                    max_id = max(product.get('id', 0) for product in products)
+                    return max_id + 1
+        return 1
+    except Exception as e:
+        print(f"Error getting next product ID: {e}")
+        return 1
+
+def update_products_json(product_data):
+    """Adds or updates a product in products.json."""
+    try:
+        if os.path.exists(PRODUCTS_JSON):
+            with open(PRODUCTS_JSON, 'r') as f:
+                products = json.load(f)
+        else:
+            products = []
+        
+        # Check if product with this ID already exists
+        product_id = product_data['id']
+        existing_index = next((i for i, p in enumerate(products) if p.get('id') == product_id), None)
+        
+        if existing_index is not None:
+            products[existing_index] = product_data
+        else:
+            products.append(product_data)
+        
+        with open(PRODUCTS_JSON, 'w') as f:
+            json.dump(products, f, indent=4)
+        
+        print(f"Updated products.json with product ID {product_id}")
+    except Exception as e:
+        print(f"Error updating products.json: {e}")
+
+@app.post("/create-product")
+def create_product_route():
+    """Creates a product from form data, saves images, and generates 3D model."""
+    try:
+        # Get form data
+        display_images = request.files.getlist('displayImages')
+        reference_images = request.files.getlist('referenceImages')
+        product_name = request.form.get('productName', '').strip()
+        length = request.form.get('length', '').strip()
+        width = request.form.get('width', '').strip()
+        height = request.form.get('height', '').strip()
+        is_listing = request.form.get('isListing', 'false').lower() == 'true'
+        
+        # Validate required fields
+        if not reference_images or len(reference_images) == 0:
+            return jsonify({"error": "At least one reference image is required for 3D model generation."}), 400
+        if not product_name:
+            return jsonify({"error": "Product name is required."}), 400
+        if not length or not width or not height:
+            return jsonify({"error": "All dimensions are required."}), 400
+        
+        # Get next product ID
+        product_id = get_next_product_id()
+        
+        # Save display images to database/images folder (for product page)
+        display_image_paths = []
+        for idx, image_file in enumerate(display_images):
+            # Get file extension
+            filename = image_file.filename
+            ext = os.path.splitext(filename)[1] or '.jpg'
+            image_filename = f"{product_id}_display_{idx + 1}{ext}"
+            image_path = os.path.join(IMAGES_DIR, image_filename)
+            
+            # Save the image
+            image_file.save(image_path)
+            display_image_paths.append(f"images/{image_filename}")
+            print(f"Saved display image: {image_path}")
+        
+        # Save listing image if it's a listing
+        listing_image_path = None
+        if is_listing:
+            listing_image = request.files.get('listingImage')
+            if listing_image:
+                filename = listing_image.filename
+                ext = os.path.splitext(filename)[1] or '.jpg'
+                listing_filename = f"{product_id}_listing{ext}"
+                listing_path = os.path.join(IMAGES_DIR, listing_filename)
+                listing_image.save(listing_path)
+                listing_image_path = f"images/{listing_filename}"
+                print(f"Saved listing image: {listing_path}")
+        
+        # Create 3D model job using reference images
+        # Reset file pointers before sending to pipeline
+        for img in reference_images:
+            img.seek(0)
+        
+        meshy_task_id = create_3d_model_from_images(reference_images, product_name)
+        
+        # Get next job ID
+        local_id = get_next_job_id()
+        
+        # Prepare product data (will be updated when model is ready)
+        product_data = {
+            "id": product_id,
+            "name": product_name,
+            "image_paths": display_image_paths,  # Display images for product page
+            "glb": f"glbs/{product_id}.glb",
+            "measurements": {
+                "length": float(length),
+                "width": float(width),
+                "height": float(height)
+            }
+        }
+        
+        # Add listing-specific fields
+        if is_listing:
+            product_data["price"] = float(request.form.get('price', 0))
+            product_data["description"] = request.form.get('description', '').strip()
+            if listing_image_path:
+                product_data["listing_image"] = listing_image_path
+        
+        # Create job data
+        job_data = {
+            "local_id": local_id,
+            "meshy_task_id": meshy_task_id,
+            "prompt": product_name,
+            "status": "PENDING",
+            "status_meshy": "PENDING",
+            "progress": 0,
+            "created_at": int(time.time()),
+            "error_message": None,
+            "is_product": True,
+            "product_id": product_id,
+            "product_data": product_data
+        }
+        
+        # Write initial job metadata
+        json_path = os.path.join(JOBS_DIR, f"{local_id}.json")
+        with open(json_path, 'w') as f:
+            json.dump(job_data, f, indent=4)
+        
+        # Add initial product entry to products.json (without GLB initially)
+        update_products_json(product_data)
+        
+        # Start background polling
+        start_polling_thread(job_data)
+        
+        return jsonify({
+            "message": "Product created successfully. 3D model is being generated.",
+            "product_id": product_id,
+            "job_id": local_id
+        }), 202
+        
+    except MeshyApiException as e:
+        return jsonify({"error": e.args[0], "details": e.details}), e.status_code
+    except Exception as e:
+        print(f"Error creating product: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # --- Main Execution ---
 if __name__ == "__main__":

@@ -6,8 +6,14 @@ import json
 from dotenv import load_dotenv
 import base64 # <-- Import the base64 library
 import time
+import trimesh
 
-load_dotenv()
+# Load .env from project root (two levels up from backend/app/)
+pipeline_dir = os.path.dirname(os.path.abspath(__file__))
+backend_dir = os.path.dirname(pipeline_dir)
+project_root = os.path.dirname(backend_dir)
+env_path = os.path.join(project_root, '.env')
+load_dotenv(env_path)
 
 MESHY_API_KEY = os.getenv("MESHY_API_KEY")
 
@@ -174,12 +180,107 @@ def poll_and_download_model(task_id, save_path):
             # Optional: decide if you want to break the loop on any exception
             time.sleep(15) # Wait a bit longer after an error
             
-def poll_and_update_job_status(meshy_task_id, json_path, glb_save_path):
+def scale_glb_to_dimensions(glb_path, length_cm, width_cm, height_cm):
+    """
+    Scales a GLB file to match the provided dimensions in centimeters.
+    Maps dimensions intelligently: larger GLB dimension -> larger user dimension.
+    
+    Args:
+        glb_path: Path to the GLB file to scale
+        length_cm: Desired length in centimeters
+        width_cm: Desired width in centimeters
+        height_cm: Desired height in centimeters
+    
+    Returns:
+        True if scaling was successful, False otherwise
+    """
+    try:
+        # Load the GLB file
+        mesh = trimesh.load(glb_path)
+        
+        # Handle scene (multiple meshes) or single mesh
+        if isinstance(mesh, trimesh.Scene):
+            # Get the combined bounding box of all meshes in the scene
+            bounds = mesh.bounds
+        else:
+            # Single mesh
+            bounds = mesh.bounds
+        
+        # Calculate the actual dimensions of the model (in meters, since GLB uses meters)
+        model_dims = bounds[1] - bounds[0]  # max - min for x, y, z
+        model_length = model_dims[0]  # x-axis
+        model_width = model_dims[1]   # y-axis
+        model_height = model_dims[2]  # z-axis
+        
+        # Convert user dimensions from cm to meters
+        user_length = length_cm / 100.0
+        user_width = width_cm / 100.0
+        user_height = height_cm / 100.0
+        
+        # Create sorted lists to map larger to larger
+        model_dims_sorted = sorted([
+            (model_length, 0),  # (value, axis_index)
+            (model_width, 1),
+            (model_height, 2)
+        ], reverse=True)
+        
+        user_dims_sorted = sorted([
+            (user_length, 'length'),
+            (user_width, 'width'),
+            (user_height, 'height')
+        ], reverse=True)
+        
+        # Calculate scale factors for each axis
+        # Map: largest model dim -> largest user dim, etc.
+        scale_factors = [1.0, 1.0, 1.0]  # x, y, z
+        
+        for i, ((model_val, axis_idx), (user_val, _)) in enumerate(zip(model_dims_sorted, user_dims_sorted)):
+            if model_val > 0:  # Avoid division by zero
+                scale = user_val / model_val
+                scale_factors[axis_idx] = scale
+        
+        # Apply scaling
+        if isinstance(mesh, trimesh.Scene):
+            # Scale all meshes in the scene
+            for node_name in mesh.graph.nodes_geometry:
+                transform, geometry_name = mesh.graph[node_name]
+                geometry = mesh.geometry[geometry_name]
+                geometry.apply_scale(scale_factors)
+        else:
+            # Scale single mesh
+            mesh.apply_scale(scale_factors)
+        
+        # Export the scaled mesh back to GLB
+        mesh.export(glb_path)
+        
+        print(f"Scaled GLB: Model dimensions {model_dims} -> User dimensions [{user_length}, {user_width}, {user_height}] meters")
+        print(f"Scale factors applied: x={scale_factors[0]:.4f}, y={scale_factors[1]:.4f}, z={scale_factors[2]:.4f}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error scaling GLB file {glb_path}: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def poll_and_update_job_status(meshy_task_id, json_path, glb_save_path, is_product=False, product_id=None):
     """
     Polls Meshy API and updates a local JSON file with the job's status.
-    Downloads the .glb file on success. Designed for a background thread.
+    Downloads the .glb file on success. If is_product is True, also updates products.json.
+    Designed for a background thread.
     """
     print(f"THREAD STARTED: Polling for Meshy task {meshy_task_id}")
+    
+    # Determine products.json path if this is a product job
+    products_json_path = None
+    if is_product:
+        # Get the project root (go up from backend/app to backend, then to project root)
+        pipeline_dir = os.path.dirname(os.path.abspath(__file__))
+        backend_dir = os.path.dirname(pipeline_dir)
+        project_root = os.path.dirname(backend_dir)
+        products_json_path = os.path.join(project_root, 'database', 'products.json')
+    
     while True:
         try:
             status_data = get_task_status(meshy_task_id)
@@ -203,11 +304,38 @@ def poll_and_update_job_status(meshy_task_id, json_path, glb_save_path):
                     raise ValueError("Task succeeded but no GLB URL found.")
 
                 print(f"THREAD SUCCESS: Downloading from {glb_url}")
+                
+                # Ensure directory exists
+                os.makedirs(os.path.dirname(glb_save_path), exist_ok=True)
+                
                 with requests.get(glb_url, stream=True) as r:
                     r.raise_for_status()
                     with open(glb_save_path, 'wb') as f:
                         for chunk in r.iter_content(chunk_size=8192):
                             f.write(chunk)
+                
+                # Scale the GLB file if this is a product job with dimensions
+                if is_product:
+                    try:
+                        with open(json_path, 'r') as f:
+                            job_data = json.load(f)
+                        
+                        # Get dimensions from product_data
+                        if 'product_data' in job_data and 'measurements' in job_data['product_data']:
+                            measurements = job_data['product_data']['measurements']
+                            length_cm = measurements.get('length', 0)
+                            width_cm = measurements.get('width', 0)
+                            height_cm = measurements.get('height', 0)
+                            
+                            if length_cm > 0 and width_cm > 0 and height_cm > 0:
+                                print(f"THREAD: Scaling GLB to dimensions: {length_cm}cm x {width_cm}cm x {height_cm}cm")
+                                if scale_glb_to_dimensions(glb_save_path, length_cm, width_cm, height_cm):
+                                    print(f"THREAD: Successfully scaled GLB file")
+                                else:
+                                    print(f"THREAD: Warning - Failed to scale GLB file, using original")
+                    except Exception as scale_e:
+                        print(f"THREAD: Error during scaling: {scale_e}")
+                        # Continue even if scaling fails
                 
                 # Final update to the JSON file to mark as READY
                 with open(json_path, 'r+') as f:
@@ -217,6 +345,34 @@ def poll_and_update_job_status(meshy_task_id, json_path, glb_save_path):
                     f.seek(0)
                     json.dump(job_data, f, indent=4)
                     f.truncate()
+                
+                # If this is a product job, update products.json
+                if is_product and products_json_path and os.path.exists(products_json_path):
+                    try:
+                        with open(products_json_path, 'r') as f:
+                            products = json.load(f)
+                        
+                        # Find and update the product
+                        product_updated = False
+                        for product in products:
+                            if product.get('id') == product_id:
+                                # Update the product entry (GLB path should already be set)
+                                # The product_data from job_data should have all the info
+                                if 'product_data' in job_data:
+                                    product.update(job_data['product_data'])
+                                product_updated = True
+                                break
+                        
+                        if not product_updated and 'product_data' in job_data:
+                            # Product not found, add it
+                            products.append(job_data['product_data'])
+                        
+                        with open(products_json_path, 'w') as f:
+                            json.dump(products, f, indent=4)
+                        
+                        print(f"THREAD: Updated products.json for product ID {product_id}")
+                    except Exception as update_e:
+                        print(f"THREAD WARNING: Failed to update products.json: {update_e}")
 
                 print(f"THREAD FINISHED: Saved model to {glb_save_path} and marked job as READY.")
                 break # Success, exit the loop
