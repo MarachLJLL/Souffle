@@ -370,6 +370,14 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
         instance.position.setFromMatrixPosition(reticle.matrix);
         instance.quaternion.setFromRotationMatrix(reticle.matrix);
 
+        // Remove any existing helper for this model BEFORE computing bounds,
+        // so the bounding box only measures the actual mesh, not the helper itself.
+        let helperGroup = helpers[index];
+        if (helperGroup && helperGroup.parent) {
+          helperGroup.parent.remove(helperGroup);
+          helpers[index] = null;
+        }
+
         // Measure an oriented bounding box in the model's local space,
         // then parent the helper to the instance so it follows rotation.
         instance.updateWorldMatrix(true, true);
@@ -383,12 +391,7 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
         worldBox.getSize(size);
         worldBox.getCenter(centerLocal);
 
-        // Create or update a helper group (local-space helper, parented to the instance)
-        let helperGroup = helpers[index];
-        if (helperGroup && helperGroup.parent) {
-          helperGroup.parent.remove(helperGroup);
-          helpers[index] = null;
-        }
+        // Create a fresh helper group (local-space helper, parented to the instance)
 
         const boxGeo = new THREE.BoxGeometry(size.x, size.y, size.z);
         const fill = new THREE.Mesh(
