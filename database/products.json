@@ -1,0 +1,34 @@
+[
+    {
+        "id": 1,
+        "name": "Product A",
+        "price": 29.99,
+        "description": "A great product A",
+        "image_paths": [
+            "images/product_1_1.jpg",
+            "images/product_1_2.jpg"
+        ],
+        "glb": "glbs/1.glb",
+        "measurements": {
+            "length": 15.0,
+            "width": 10.0,
+            "height": 5.0
+        }
+    },
+    {
+        "id": 2,
+        "name": "Product B",
+        "price": 49.99,
+        "description": "An awesome product B",
+        "image_paths": [
+            "images/product_2_1.jpg",
+            "images/product_2_2.jpg"
+        ],
+        "glb": "glbs/2.glb",
+        "measurements": {
+            "length": 20.0,
+            "width": 15.0,
+            "height": 7.5
+        }
+    }
+]
