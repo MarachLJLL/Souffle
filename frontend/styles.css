@@ -889,6 +889,7 @@ body {
     border: 2px solid transparent;
     transition: all 0.2s ease;
     cursor: pointer;
+    position: relative;
 }
 
 .product-selection-item:hover {
@@ -901,30 +902,39 @@ body {
     background-color: #fafafa;
 }
 
+.checkbox-container-bottom {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    z-index: 10;
+}
+
 .product-checkbox {
     width: 20px;
     height: 20px;
     cursor: pointer;
     accent-color: var(--primary-color);
-    margin-bottom: 8px;
 }
 
-.product-selection-image-wrapper {
+.product-3d-viewer {
     width: 100%;
+    min-height: 200px;
     aspect-ratio: 1;
     border-radius: 6px;
     overflow: hidden;
     background: #f5f5f5;
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.product-selection-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+.product-3d-viewer canvas {
+    width: 100% !important;
+    height: 100% !important;
     display: block;
+    border-radius: 6px;
+    margin: 0 auto;
 }
 
 .product-selection-label {
