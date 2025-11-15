@@ -15,38 +15,79 @@ function getProductIdFromURL() {
 async function loadProduct() {
     const productId = getProductIdFromURL();
     console.log('Loading product with ID:', productId);
+    console.log('Current URL:', window.location.href);
+    console.log('Current pathname:', window.location.pathname);
     
     // Try to load from database first
     try {
-        // Determine base path - try different possible paths
+        // Determine base path - try different possible paths based on current URL
         let response = null;
         let workingPath = null;
+        const baseUrl = window.location.origin;
+        const pathname = window.location.pathname;
+        
+        // Determine if we're in a subdirectory or root
+        const isInSubdirectory = pathname.split('/').filter(p => p && !p.endsWith('.html')).length > 1;
+        
         const paths = [
             '../database/products.json',
-            'database/products.json'
+            'database/products.json',
+            './database/products.json'
         ];
+        
+        // Also try absolute paths based on current location
+        if (pathname.includes('/frontend/')) {
+            paths.unshift('../database/products.json');
+        }
+        
+        console.log('Trying paths:', paths);
+        console.log('Is in subdirectory:', isInSubdirectory);
         
         // Try each path
         for (const path of paths) {
             try {
-                const testResponse = await fetch(path);
+                const fullUrl = path.startsWith('http') ? path : new URL(path, window.location.href).href;
+                console.log('Attempting to fetch:', fullUrl);
+                
+                const testResponse = await fetch(path, {
+                    method: 'GET',
+                    cache: 'no-cache',
+                    headers: {
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+                
+                console.log(`Response for ${path}:`, {
+                    ok: testResponse.ok,
+                    status: testResponse.status,
+                    statusText: testResponse.statusText,
+                    contentType: testResponse.headers.get('content-type')
+                });
+                
                 if (testResponse.ok) {
                     const contentType = testResponse.headers.get('content-type');
                     if (contentType && contentType.includes('application/json')) {
                         response = testResponse;
                         workingPath = path;
-                        console.log('Successfully loaded from:', path);
+                        console.log('✅ Successfully loaded from:', path);
                         break;
+                    } else {
+                        console.warn(`Path ${path} returned non-JSON content:`, contentType);
                     }
                 }
             } catch (e) {
-                console.log('Failed to load from:', path, e.message);
+                console.error(`❌ Failed to load from ${path}:`, e.message, e);
                 continue;
             }
         }
         
         if (!response || !response.ok) {
-            throw new Error(`HTTP error! Could not load products.json from any path. Make sure you're serving the files from a web server.`);
+            const errorMsg = `Could not load products.json from any path. Tried: ${paths.join(', ')}\n` +
+                           `Current location: ${window.location.href}\n` +
+                           `Make sure you're serving files from a web server.\n` +
+                           `If using Python: cd frontend && python -m http.server 8000`;
+            console.error(errorMsg);
+            throw new Error(errorMsg);
         }
         
         const dbProducts = await response.json();
@@ -98,9 +139,10 @@ async function loadProduct() {
             throw new Error(`Product with ID ${productId} not found`);
         }
     } catch (error) {
-        console.error('Error loading product from database:', error);
+        console.error('❌ Error loading product from database:', error);
+        console.error('Error stack:', error.stack);
         
-        // Show detailed error to user
+        // Show detailed error to user with helpful instructions
         const titleEl = document.getElementById('productTitle');
         if (titleEl) {
             titleEl.textContent = 'Error loading product';
@@ -111,7 +153,33 @@ async function loadProduct() {
         }
         const specsEl = document.getElementById('productSpecs');
         if (specsEl) {
-            specsEl.innerHTML = `<p style="color: red;">Error: ${error.message}</p><p>Check browser console for details.</p>`;
+            const isFileProtocol = window.location.protocol === 'file:';
+            const errorHtml = `
+                <div style="color: red; padding: 20px; border: 2px solid red; border-radius: 8px; background: #ffe6e6;">
+                    <h3 style="margin-top: 0;">⚠️ Error Loading Product</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    ${isFileProtocol ? `
+                        <p><strong>Issue:</strong> You're opening the file directly (file://) which blocks JSON loading due to CORS.</p>
+                        <p><strong>Solution:</strong></p>
+                        <ol>
+                            <li>Open terminal in the project root</li>
+                            <li>Run: <code>python serve.py</code> or <code>cd frontend && python -m http.server 8000</code></li>
+                            <li>Open: <code>http://localhost:8000/product.html?id=${getProductIdFromURL()}</code></li>
+                        </ol>
+                    ` : `
+                        <p><strong>Possible issues:</strong></p>
+                        <ul>
+                            <li>Check that <code>database/products.json</code> exists</li>
+                            <li>Verify the file structure matches the expected layout</li>
+                            <li>Check browser console (F12) for more details</li>
+                            <li>Try hard refresh: Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac)</li>
+                        </ul>
+                        <p><strong>Current URL:</strong> ${window.location.href}</p>
+                    `}
+                    <p><small>Check the browser console (F12) for detailed error information.</small></p>
+                </div>
+            `;
+            specsEl.innerHTML = errorHtml;
         }
         return;
     }
