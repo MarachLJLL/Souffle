@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const Carousel3D = () => {
   const containerRef = useRef(null);
@@ -17,29 +16,33 @@ const Carousel3D = () => {
       renderer: null,
       models: [],
       isAnimating: false,
-      autoRotateEnabled: true,
-      autoRotateInterval: null,
+      autoSwipeInterval: null,
+      autoSwipeCount: 0,
+      initialAutoSwipes: 3,
       userHasInteracted: false,
       centerGroup: null,
       currentIndex: 0,
       targetIndex: 0,
+      rotationSpeed: { x: 0, y: 0 },
+      autoSpinSpeed: 0.002, // Reduced from 0.005 for slower auto-spin
       originalModelFiles: [
-        '/assets/models/Chair.glb',
-        '/assets/models/chair_sagano.glb',
-        '/assets/models/brown_leather_chair.glb',
-        '/assets/models/2.glb',
+        '/database/glbs/1.glb',
+        '/database/glbs/2.glb',
+        '/database/glbs/3.glb',
+        '/database/glbs/4.glb',
       ],
       modelFiles: [],
-      rotationSpeed: { x: 0, y: 0 },
       mouseDown: false,
-      mouseDownX: 0,
-      mouseDownY: 0,
+      mouseDownX: undefined,
+      mouseDownY: undefined,
+      radius: 12,
+      visibleCount: 3,
     };
 
     carouselRef.current = carousel;
 
-    // Duplicate models
-    const duplicates = 10;
+    // Duplicate models many times for seamless circular carousel
+    const duplicates = 20;
     for (let i = 0; i < duplicates; i++) {
       carousel.modelFiles.push(...carousel.originalModelFiles);
     }
@@ -89,7 +92,10 @@ const Carousel3D = () => {
     carousel.scene.add(rimLight);
 
     // Setup center group
+    // The centerGroup is positioned at the origin and only rotates
+    // Items in the centerGroup should have position (0, y, 0) relative to the group
     carousel.centerGroup = new THREE.Group();
+    carousel.centerGroup.position.set(0, 0, 0); // Center group at origin
     carousel.scene.add(carousel.centerGroup);
 
     // Load models
@@ -118,7 +124,7 @@ const Carousel3D = () => {
           const center = box.getCenter(new THREE.Vector3());
           const size = box.getSize(new THREE.Vector3());
           const maxDim = Math.max(size.x, size.y, size.z);
-          const baseScale = 3.0 / maxDim;
+          const baseScale = 4.5 / maxDim;
           originalModel.scale.setScalar(baseScale);
           originalModel.userData.baseScale = baseScale;
           originalModel.userData.yOffset = -center.y * baseScale;
@@ -159,91 +165,109 @@ const Carousel3D = () => {
               }
             });
             createIndicators(carousel);
-            startAutoRotate(carousel);
+            startInitialAutoSwipes(carousel);
           }
         },
         undefined,
         (error) => {
           console.error('Error loading model:', error);
+          console.error('Failed to load:', file);
+          // If all models fail to load, the carousel won't appear
+          // This helps debug path issues
         }
       );
     });
 
-    function positionModel(carousel, model, index) {
-      const centerScale = 1.2;
-      const sideScale = 0.75;
-      const sideOffset = 5;
-      const offScreenOffset = 15;
-      const centerIndex = carousel.currentIndex;
+    // Calculate relative index with proper wrapping
+    function getRelativeIndex(index, centerIndex, totalLength) {
+      let relative = index - centerIndex;
+      // Normalize to [-totalLength/2, totalLength/2)
+      if (relative > totalLength / 2) {
+        relative -= totalLength;
+      } else if (relative < -totalLength / 2) {
+        relative += totalLength;
+      }
+      return relative;
+    }
 
-      if (index === centerIndex) {
-        model.position.set(0, model.userData.yOffset || 0, 0);
-        model.scale.setScalar(
-          (model.userData.baseScale || 1) * centerScale
-        );
-        model.visible = true;
+    function positionModel(carousel, model, index, interpolatedCenter = null) {
+      const centerScale = 1.4;
+      const sideScale = 0.85;
+      const radius = carousel.radius;
+      const visibleCount = carousel.visibleCount;
+      const totalLength = carousel.modelFiles.length;
+      
+      // Use interpolated center if provided (during animation), otherwise use currentIndex
+      const centerIndex = interpolatedCenter !== null ? interpolatedCenter : carousel.currentIndex;
+      const relativeIndex = getRelativeIndex(index, centerIndex, totalLength);
+      
+      // Calculate angle for circular positioning
+      const angleStep = Math.PI / 4; // 45 degrees between items
+      const angle = relativeIndex * angleStep;
+      
+      // Calculate position on circle
+      const x = Math.sin(angle) * radius;
+      const z = Math.cos(angle) * radius - radius; // Offset so center is at front
+      const y = model.userData.yOffset || 0;
+      
+      // Determine scale based on position
+      const distanceFromCenter = Math.abs(relativeIndex);
+      let scale;
+      if (distanceFromCenter === 0) {
+        scale = centerScale;
+      } else if (distanceFromCenter <= visibleCount / 2) {
+        const scaleFactor = 1 - (distanceFromCenter / (visibleCount / 2)) * 0.3;
+        scale = centerScale * scaleFactor;
+      } else {
+        scale = sideScale * 0.5;
+      }
+      
+      // Center group membership - check BEFORE setting position
+      // This ensures the position is set in the correct coordinate space
+      const isCenter = Math.abs(relativeIndex) < 0.5;
+      
+      // If moving to center, add to centerGroup first
+      // If moving from center, remove from centerGroup first
+      if (isCenter) {
         if (model.parent !== carousel.centerGroup) {
           carousel.scene.remove(model);
           carousel.centerGroup.add(model);
+          // Reset position relative to centerGroup (which is at origin)
+          model.position.set(0, y, 0);
+        } else {
+          // Already in centerGroup, just update y position
+          model.position.set(0, y, 0);
         }
-        model.traverse((child) => {
-          if (child.isMesh) {
-            child.material.transparent = true;
-            child.material.opacity = 1;
-            child.visible = true;
-          }
-        });
-      } else if (index === centerIndex - 1) {
-        model.position.set(-sideOffset, model.userData.yOffset || 0, 0);
-        model.scale.setScalar(
-          (model.userData.baseScale || 1) * sideScale
-        );
-        model.visible = true;
-        if (model.parent === carousel.centerGroup) {
-          carousel.centerGroup.remove(model);
-          carousel.scene.add(model);
-        }
-        model.rotation.set(0, 0, 0);
-        model.traverse((child) => {
-          if (child.isMesh) {
-            child.material.transparent = true;
-            child.material.opacity = 1;
-            child.visible = true;
-          }
-        });
-      } else if (index === centerIndex + 1) {
-        model.position.set(sideOffset, model.userData.yOffset || 0, 0);
-        model.scale.setScalar(
-          (model.userData.baseScale || 1) * sideScale
-        );
-        model.visible = true;
-        if (model.parent === carousel.centerGroup) {
-          carousel.centerGroup.remove(model);
-          carousel.scene.add(model);
-        }
-        model.rotation.set(0, 0, 0);
-        model.traverse((child) => {
-          if (child.isMesh) {
-            child.material.transparent = true;
-            child.material.opacity = 1;
-            child.visible = true;
-          }
-        });
       } else {
-        model.position.set(
-          index < centerIndex ? -offScreenOffset : offScreenOffset,
-          model.userData.yOffset || 0,
-          0
-        );
-        model.visible = false;
-        model.traverse((child) => {
-          if (child.isMesh) {
-            child.material.transparent = true;
+        if (model.parent === carousel.centerGroup) {
+          // Moving from center to side - remove from group first
+          carousel.centerGroup.remove(model);
+          carousel.scene.add(model);
+        }
+        // Set position in scene coordinates
+        model.position.set(x, y, z);
+      }
+      
+      // Set scale
+      model.scale.setScalar((model.userData.baseScale || 1) * scale);
+      
+      // Visibility
+      const isVisible = Math.abs(relativeIndex) <= visibleCount / 2;
+      model.visible = isVisible;
+      
+      // Set opacity
+      model.traverse((child) => {
+        if (child.isMesh) {
+          child.material.transparent = true;
+          if (isVisible) {
+            child.material.opacity = 1;
+            child.visible = true;
+          } else {
             child.material.opacity = 0;
             child.visible = false;
           }
-        });
-      }
+        }
+      });
     }
 
     function createIndicators(carousel) {
@@ -254,50 +278,82 @@ const Carousel3D = () => {
       carousel.originalModelFiles.forEach((_, index) => {
         const indicator = document.createElement('div');
         indicator.className = 'carousel-indicator';
-        if (index === carousel.currentIndex % carousel.originalModelFiles.length) {
+        const currentOriginalIndex = carousel.currentIndex % carousel.originalModelFiles.length;
+        if (index === currentOriginalIndex) {
           indicator.classList.add('active');
         }
         indicator.addEventListener('click', () => {
-          goToIndex(carousel, index);
+          goToOriginalIndex(carousel, index);
         });
         indicatorsContainer.appendChild(indicator);
       });
     }
 
-    function goToIndex(carousel, targetIndex) {
+    function goToOriginalIndex(carousel, targetOriginalIndex) {
       if (carousel.isAnimating) return;
-      stopAutoRotate(carousel);
-      carousel.targetIndex = targetIndex;
+      stopInitialAutoSwipes(carousel);
+      carousel.userHasInteracted = true;
+      
+      const totalLength = carousel.modelFiles.length;
+      const currentOriginalIndex = carousel.currentIndex % carousel.originalModelFiles.length;
+      
+      // Find the closest instance of the target model
+      let bestIndex = carousel.currentIndex;
+      let minDistance = Infinity;
+      
+      for (let i = 0; i < totalLength; i++) {
+        if (i % carousel.originalModelFiles.length === targetOriginalIndex) {
+          const distance = Math.min(
+            Math.abs(i - carousel.currentIndex),
+            totalLength - Math.abs(i - carousel.currentIndex)
+          );
+          if (distance < minDistance) {
+            minDistance = distance;
+            bestIndex = i;
+          }
+        }
+      }
+      
+      // Determine direction (prefer forward if equal distance)
+      let delta = bestIndex - carousel.currentIndex;
+      if (delta > totalLength / 2) {
+        delta -= totalLength;
+      } else if (delta < -totalLength / 2) {
+        delta += totalLength;
+      }
+      
+      carousel.targetIndex = bestIndex;
       carousel.isAnimating = true;
-      updateCarousel(carousel);
+      updateCarousel(carousel, delta);
     }
 
     function next(carousel) {
       if (carousel.isAnimating) return;
-      stopAutoRotate(carousel);
-      carousel.targetIndex = (carousel.currentIndex + 1) % carousel.modelFiles.length;
+      stopInitialAutoSwipes(carousel);
+      const totalLength = carousel.modelFiles.length;
+      carousel.targetIndex = (carousel.currentIndex + 1) % totalLength;
       carousel.isAnimating = true;
-      updateCarousel(carousel);
+      updateCarousel(carousel, 1); // Always move forward by 1
     }
 
     function prev(carousel) {
       if (carousel.isAnimating) return;
-      stopAutoRotate(carousel);
-      carousel.targetIndex =
-        (carousel.currentIndex - 1 + carousel.modelFiles.length) %
-        carousel.modelFiles.length;
+      stopInitialAutoSwipes(carousel);
+      const totalLength = carousel.modelFiles.length;
+      carousel.targetIndex = (carousel.currentIndex - 1 + totalLength) % totalLength;
       carousel.isAnimating = true;
-      updateCarousel(carousel);
+      updateCarousel(carousel, -1); // Always move backward by 1
     }
 
-    function updateCarousel(carousel) {
-      if (!carousel.isAnimating && carousel.currentIndex === carousel.targetIndex)
+    function updateCarousel(carousel, delta) {
+      if (!carousel.isAnimating && carousel.currentIndex === carousel.targetIndex) {
         return;
+      }
 
       const startIndex = carousel.currentIndex;
       const endIndex = carousel.targetIndex;
       const startTime = Date.now();
-      const duration = 800;
+      const duration = 1200; // Increased from 800 to 1200 for slower transition
 
       function animate() {
         const elapsed = Date.now() - startTime;
@@ -308,169 +364,66 @@ const Carousel3D = () => {
         };
 
         const easedProgress = easeInOutCubic(progress);
-
+        
+        // Interpolate center index using the delta direction
+        // This ensures we always move in the correct visual direction
+        const interpolatedCenter = startIndex + delta * easedProgress;
+        
+        // Update all models based on interpolated center
         carousel.models.forEach((model, index) => {
-          const centerScale = 1.2;
-          const sideScale = 0.75;
-          const sideOffset = 5;
-          const offScreenOffset = 15;
-
-          let startX, endX, startScale, endScale;
-          let isExiting = false;
-          let isEntering = false;
-          let isStayingVisible = false;
-
-          if (index === startIndex) {
-            startX = 0;
-            endX = endIndex > startIndex ? -offScreenOffset : offScreenOffset;
-            startScale = centerScale;
-            endScale = sideScale;
-            isExiting = true;
-          } else if (index === startIndex - 1) {
-            startX = -sideOffset;
-            endX = startIndex === endIndex + 1 ? 0 : -offScreenOffset;
-            startScale = sideScale;
-            endScale = index === endIndex ? centerScale : sideScale;
-            isExiting = index !== endIndex;
-          } else if (index === startIndex + 1) {
-            startX = sideOffset;
-            endX = startIndex === endIndex - 1 ? 0 : offScreenOffset;
-            startScale = sideScale;
-            endScale = index === endIndex ? centerScale : sideScale;
-            isExiting = index !== endIndex;
-          } else if (index === endIndex) {
-            startX = endIndex < startIndex ? -offScreenOffset : offScreenOffset;
-            endX = 0;
-            startScale = sideScale;
-            endScale = centerScale;
-            isEntering = true;
-          } else if (index === endIndex - 1) {
-            startX = index < startIndex ? -offScreenOffset : -sideOffset;
-            endX = -sideOffset;
-            startScale = sideScale;
-            endScale = sideScale;
-            isEntering = index === startIndex - 1;
-          } else if (index === endIndex + 1) {
-            startX = index > startIndex ? offScreenOffset : sideOffset;
-            endX = sideOffset;
-            startScale = sideScale;
-            endScale = sideScale;
-            isEntering = index === startIndex + 1;
-          } else {
-            const currentCenter = Math.floor(
-              startIndex + (endIndex - startIndex) * easedProgress
-            );
-            if (
-              index === currentCenter - 1 ||
-              index === currentCenter ||
-              index === currentCenter + 1
-            ) {
-              isStayingVisible = true;
-            }
-            startX = model.position.x;
-            endX = index < endIndex ? -offScreenOffset : offScreenOffset;
-            startScale = sideScale;
-            endScale = sideScale;
-          }
-
-          if (isExiting) {
-            model.position.x = endX;
-            model.visible = false;
-            model.traverse((child) => {
-              if (child.isMesh) {
-                child.material.opacity = 0;
-                child.visible = false;
-              }
-            });
-          } else if (isEntering) {
-            const fadeStart = 0.8;
-            const opacity = progress > fadeStart ? (progress - fadeStart) / (1 - fadeStart) : 0;
-            model.position.x = startX + (endX - startX) * easedProgress;
-            model.visible = opacity > 0;
-            model.traverse((child) => {
-              if (child.isMesh) {
-                child.material.opacity = opacity;
-                child.visible = opacity > 0;
-              }
-            });
-          } else if (isStayingVisible) {
-            model.position.x = startX + (endX - startX) * easedProgress;
-            model.visible = true;
-            model.traverse((child) => {
-              if (child.isMesh) {
-                child.material.opacity = 1;
-                child.visible = true;
-              }
-            });
-          } else {
-            model.visible = false;
-            model.traverse((child) => {
-              if (child.isMesh) {
-                child.material.opacity = 0;
-                child.visible = false;
-              }
-            });
-          }
-
-          const scale = startScale + (endScale - startScale) * easedProgress;
-          model.scale.setScalar((model.userData.baseScale || 1) * scale);
-
-          if (index === endIndex && progress > 0.5) {
-            if (model.parent !== carousel.centerGroup) {
-              carousel.scene.remove(model);
-              carousel.centerGroup.add(model);
-              model.rotation.set(0, 0, 0);
-            }
-          } else if (index !== endIndex && model.parent === carousel.centerGroup) {
-            carousel.centerGroup.remove(model);
-            carousel.scene.add(model);
-            model.rotation.set(0, 0, 0);
-          }
+          positionModel(carousel, model, index, interpolatedCenter);
         });
 
         if (progress < 1) {
           requestAnimationFrame(animate);
         } else {
-          carousel.currentIndex = carousel.targetIndex;
+          // Animation complete
+          carousel.currentIndex = endIndex;
           carousel.isAnimating = false;
 
+          // Final positioning
           carousel.models.forEach((m, idx) => {
             positionModel(carousel, m, idx);
           });
           createIndicators(carousel);
-
-          if (!carousel.userHasInteracted && carousel.autoRotateEnabled) {
-            resumeAutoRotate(carousel);
-          }
         }
       }
 
       animate();
     }
 
-    function startAutoRotate(carousel) {
-      if (carousel.autoRotateInterval) return;
-      carousel.autoRotateInterval = setInterval(() => {
-        if (!carousel.isAnimating && !carousel.userHasInteracted) {
+    function startInitialAutoSwipes(carousel) {
+      if (carousel.userHasInteracted || carousel.autoSwipeInterval) return;
+      
+      carousel.autoSwipeCount = 0;
+      const swipeDelay = 4000; // Increased from 2500 to 4000 for longer delay between auto swipes
+      
+      const performSwipe = () => {
+        if (carousel.userHasInteracted) {
+          stopInitialAutoSwipes(carousel);
+          return;
+        }
+        
+        if (carousel.autoSwipeCount < carousel.initialAutoSwipes && !carousel.isAnimating) {
           next(carousel);
+          carousel.autoSwipeCount++;
+          
+          if (carousel.autoSwipeCount < carousel.initialAutoSwipes) {
+            carousel.autoSwipeInterval = setTimeout(performSwipe, swipeDelay);
+          } else {
+            stopInitialAutoSwipes(carousel);
+          }
         }
-      }, 3000);
+      };
+      
+      carousel.autoSwipeInterval = setTimeout(performSwipe, 1000);
     }
 
-    function stopAutoRotate(carousel) {
-      if (carousel.autoRotateInterval) {
-        clearInterval(carousel.autoRotateInterval);
-        carousel.autoRotateInterval = null;
+    function stopInitialAutoSwipes(carousel) {
+      if (carousel.autoSwipeInterval) {
+        clearTimeout(carousel.autoSwipeInterval);
+        carousel.autoSwipeInterval = null;
       }
-    }
-
-    function resumeAutoRotate(carousel) {
-      stopAutoRotate(carousel);
-      setTimeout(() => {
-        if (!carousel.userHasInteracted) {
-          startAutoRotate(carousel);
-        }
-      }, 2000);
     }
 
     // Mouse controls for center model rotation
@@ -479,19 +432,18 @@ const Carousel3D = () => {
         carousel.mouseDown = true;
         carousel.mouseDownX = e.clientX;
         carousel.mouseDownY = e.clientY;
-        stopAutoRotate(carousel);
+        stopInitialAutoSwipes(carousel);
         carousel.userHasInteracted = true;
       };
 
       const onMouseMove = (e) => {
         if (!carousel.mouseDown) return;
         const deltaX = e.clientX - carousel.mouseDownX;
-        carousel.rotationSpeed.y = deltaX * 0.01;
+        carousel.rotationSpeed.y = deltaX * 0.001; // Reduced from 0.003 to 0.001 for less sensitivity
       };
 
       const onMouseUp = () => {
         carousel.mouseDown = false;
-        resumeAutoRotate(carousel);
       };
 
       renderer.domElement.addEventListener('mousedown', onMouseDown);
@@ -502,8 +454,10 @@ const Carousel3D = () => {
       // Keyboard controls
       const onKeyDown = (e) => {
         if (e.key === 'ArrowRight') {
+          stopInitialAutoSwipes(carousel);
           next(carousel);
         } else if (e.key === 'ArrowLeft') {
+          stopInitialAutoSwipes(carousel);
           prev(carousel);
         }
       };
@@ -513,7 +467,7 @@ const Carousel3D = () => {
       let touchStartX = 0;
       const onTouchStart = (e) => {
         touchStartX = e.touches[0].clientX;
-        stopAutoRotate(carousel);
+        stopInitialAutoSwipes(carousel);
         carousel.userHasInteracted = true;
       };
 
@@ -527,7 +481,6 @@ const Carousel3D = () => {
             next(carousel);
           }
         }
-        resumeAutoRotate(carousel);
       };
 
       renderer.domElement.addEventListener('touchstart', onTouchStart);
@@ -538,6 +491,17 @@ const Carousel3D = () => {
       const mouse = new THREE.Vector2();
 
       const onCanvasClick = (e) => {
+        if (carousel.mouseDownX !== undefined && carousel.mouseDownY !== undefined) {
+          const deltaX = Math.abs(e.clientX - carousel.mouseDownX);
+          const deltaY = Math.abs(e.clientY - carousel.mouseDownY);
+          if (deltaX > 5 || deltaY > 5) {
+            return;
+          }
+        }
+        
+        stopInitialAutoSwipes(carousel);
+        carousel.userHasInteracted = true;
+        
         const rect = renderer.domElement.getBoundingClientRect();
         mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -554,9 +518,10 @@ const Carousel3D = () => {
 
           const modelIndex = carousel.models.findIndex((m) => m === clickedModel);
           if (modelIndex !== -1) {
-            if (modelIndex === carousel.currentIndex - 1) {
+            const relativeIndex = getRelativeIndex(modelIndex, carousel.currentIndex, carousel.modelFiles.length);
+            if (relativeIndex < 0) {
               prev(carousel);
-            } else if (modelIndex === carousel.currentIndex + 1) {
+            } else if (relativeIndex > 0) {
               next(carousel);
             }
           }
@@ -584,12 +549,17 @@ const Carousel3D = () => {
       requestAnimationFrame(animate);
 
       // Rotate center group
-      if (carousel.centerGroup && carousel.rotationSpeed.y !== 0) {
+      if (carousel.centerGroup && carousel.rotationSpeed && carousel.rotationSpeed.y !== 0) {
         carousel.centerGroup.rotation.y += carousel.rotationSpeed.y;
-        carousel.rotationSpeed.y *= 0.95;
-        if (Math.abs(carousel.rotationSpeed.y) < 0.001) {
+        carousel.rotationSpeed.y *= 0.92;
+        if (Math.abs(carousel.rotationSpeed.y) < 0.0005) {
           carousel.rotationSpeed.y = 0;
         }
+      }
+      
+      // Auto-spin center item slowly if user isn't rotating it
+      if (carousel.centerGroup && !carousel.mouseDown && carousel.rotationSpeed.y === 0) {
+        carousel.centerGroup.rotation.y += carousel.autoSpinSpeed || 0.002;
       }
 
       renderer.render(carousel.scene, camera);
@@ -609,7 +579,7 @@ const Carousel3D = () => {
 
     // Cleanup
     return () => {
-      stopAutoRotate(carousel);
+      stopInitialAutoSwipes(carousel);
       window.removeEventListener('resize', handleResize);
       if (container && renderer.domElement.parentNode) {
         container.removeChild(renderer.domElement);
@@ -629,4 +599,3 @@ const Carousel3D = () => {
 };
 
 export default Carousel3D;
-

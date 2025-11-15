@@ -71,6 +71,7 @@ const Marketplace = () => {
                     <ProductPreview3D
                       productId={product.id}
                       glbPath={product.glb}
+                      measurements={product.measurements}
                     />
                   ) : product.image ? (
                     <img

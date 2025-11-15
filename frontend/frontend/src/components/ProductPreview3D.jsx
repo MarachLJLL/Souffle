@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-const ProductPreview3D = ({ productId, glbPath }) => {
+const ProductPreview3D = ({ productId, glbPath, measurements }) => {
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -94,11 +94,59 @@ const ProductPreview3D = ({ productId, glbPath }) => {
         model.position.y = -center.y;
         model.position.z = -center.z;
 
-        const maxDim = Math.max(size.x, size.y, size.z);
-        if (maxDim > 2) {
-          const scale = 2 / maxDim;
-          model.scale.multiplyScalar(scale);
+        // Scale based on real-world measurements to ensure proportional sizing
+        // The goal: larger real-world items should appear larger, not smaller
+        let scale = 1;
+        if (measurements && measurements.height) {
+          // Find the maximum dimension in measurements (height is usually largest for furniture)
+          const maxMeasurement = Math.max(
+            measurements.length || 0,
+            measurements.width || 0,
+            measurements.height || 0
+          );
+          
+          if (maxMeasurement > 0) {
+            // Use a smaller reference size (10cm) so chairs appear larger
+            // This ensures all items, including smaller chairs, get good scale
+            const referenceSize = 10; // cm (reduced from 20 to make chairs larger)
+            
+            // Calculate what the bounding box size should be for this measurement
+            const maxDim = Math.max(size.x, size.y, size.z);
+            
+            // Normalize: larger measurements = larger visual size
+            // But we need to account for the actual bounding box size
+            const measurementRatio = maxMeasurement / referenceSize;
+            const boundingRatio = maxDim; // Current bounding box size
+            
+            // Target: make all items fit within ~2 units, but proportionally
+            // Larger real-world items should appear larger
+            const targetSize = 2.0;
+            const sizeBasedScale = targetSize / boundingRatio;
+            
+            // Adjust scale based on measurements to maintain proportions
+            // Use a gentler power function so smaller items (chairs) don't get too small
+            // Items with larger measurements get a boost, but not too aggressive
+            const measurementBoost = Math.pow(measurementRatio, 0.3); // Gentler than 0.5 to favor smaller items
+            scale = sizeBasedScale * measurementBoost;
+            
+            // Clamp to reasonable range, with higher minimum to ensure chairs are visible
+            scale = Math.max(0.6, Math.min(3.0, scale));
+          } else {
+            // Fallback if measurements are invalid
+            const maxDim = Math.max(size.x, size.y, size.z);
+            if (maxDim > 2) {
+              scale = 2 / maxDim;
+            }
+          }
+        } else {
+          // Fallback to bounding box scaling if no measurements
+          const maxDim = Math.max(size.x, size.y, size.z);
+          if (maxDim > 2) {
+            scale = 2 / maxDim;
+          }
         }
+        
+        model.scale.multiplyScalar(scale);
 
         scene.add(model);
 
