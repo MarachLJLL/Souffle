@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Soufflé</title>
+    <title>View 3D Space - Soufflé</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,40 +33,24 @@
         </div>
     </header>
 
-    <!-- 3D Product Carousel -->
-    <section class="carousel-section">
-        <div class="carousel-container" id="carousel3D"></div>
-        <div class="carousel-controls">
-            <div class="carousel-indicators" id="carouselIndicators"></div>
-        </div>
-    </section>
-
-    <main class="main">
+    <main class="main view-3d-space-main">
         <div class="container">
-            <div class="products-grid" id="productsGrid">
-                <!-- Products will be loaded here -->
+            <div class="view-3d-space-container">
+                <h2 class="page-title">View 3D Space</h2>
+                <p class="page-subtitle">Select products to view in 3D space</p>
+                
+                <div class="products-selection" id="productsSelection">
+                    <!-- Products will be loaded here -->
+                </div>
+                
+                <div class="view-3d-actions">
+                    <button type="button" class="view-3d-btn" id="view3DBtn" disabled>
+                        View 3D Space
+                    </button>
+                </div>
             </div>
         </div>
     </main>
-
-    <!-- Cart Sidebar -->
-    <div class="cart-sidebar" id="cartSidebar">
-        <div class="cart-header">
-            <h2>CART</h2>
-            <button class="close-btn" id="closeCart">×</button>
-        </div>
-        <div class="cart-items" id="cartItems">
-            <!-- Cart items will be loaded here -->
-        </div>
-        <div class="cart-footer">
-            <div class="cart-total">
-                <span>Total: $<span id="cartTotal">0</span></span>
-            </div>
-            <button class="checkout-btn">Checkout</button>
-        </div>
-    </div>
-
-    <div class="cart-overlay" id="cartOverlay"></div>
 
     <footer class="footer">
         <div class="container">
@@ -82,16 +66,7 @@
         </div>
     </footer>
 
-    <!-- Three.js -->
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/"
-        }
-    }
-    </script>
-    <script type="module" src="carousel3d.js"></script>
-    <script src="script.js"></script>
+    <script src="view-3d-space.js"></script>
 </body>
 </html>
+
