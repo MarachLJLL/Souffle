@@ -1,0 +1,51 @@
+[
+    {
+        "id": 1,
+        "name": "Luis Chair",
+        "price": 29.99,
+        "description": "A great chair",
+        "image_paths": [
+            "images/1_1.jpg",
+            "images/1_2.jpg"
+        ],
+        "glb": "glbs/1.glb",
+        "measurements": {
+            "length": 15.0,
+            "width": 10.0,
+            "height": 5.0
+        }
+    },
+    {
+        "id": 2,
+        "name": "Redpath Chair",
+        "price": 49.99,
+        "description": "An awesome chair",
+        "image_paths": [
+            "images/2_1.jpg",
+            "images/2_2.jpg"
+        ],
+        "glb": "glbs/2.glb",
+        "measurements": {
+            "length": 20.0,
+            "width": 15.0,
+            "height": 7.5
+        }
+    },
+    {
+        "id": 3,
+        "name": "Ikea Table",
+        "image_paths": [
+            "images/3_display_1.png",
+            "images/3_display_2.png"
+        ],
+        "glb": "glbs/3.glb",
+        "measurements": {
+            "length": 30.0,
+            "width": 74.0,
+            "height": 75.0
+        },
+        "price": 59.0,
+        "description": "White Ikea table",
+        "listing_image": "images/3_listing.png"
+    }
+]
