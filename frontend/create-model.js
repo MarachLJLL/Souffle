@@ -3,12 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('createModelForm');
     const imageInput = document.getElementById('imageInput');
     const uploadArea = document.getElementById('uploadArea');
-    const uploadBtn = document.getElementById('uploadBtn');
-    const filePreviewContainer = document.getElementById('filePreviewContainer');
-    const uploadPlaceholder = document.getElementById('uploadPlaceholder');
-    const fileCount = document.getElementById('fileCount');
-    const fileCountText = document.getElementById('fileCountText');
-    const uploadErrors = document.getElementById('uploadErrors');
+    const uploadedImages = document.getElementById('uploadedImages');
     const submitBtn = document.getElementById('submitBtn');
     const productName = document.getElementById('productName');
     const length = document.getElementById('length');
@@ -24,14 +19,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Listing image upload elements
     const listingImageInput = document.getElementById('listingImageInput');
-    const listingUploadArea = document.getElementById('listingUploadArea');
-    const listingUploadBtn = document.getElementById('listingUploadBtn');
-    const listingFilePreviewContainer = document.getElementById('listingFilePreviewContainer');
-    const listingUploadPlaceholder = document.getElementById('listingUploadPlaceholder');
-    const listingUploadErrors = document.getElementById('listingUploadErrors');
+    const listingImageArea = document.getElementById('listingImageArea');
+    const listingImagePreview = document.getElementById('listingImagePreview');
     
-    const MAX_FILES = 10;
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     let uploadedFiles = [];
     let listingImageFile = null;
 
@@ -60,50 +50,32 @@ document.addEventListener('DOMContentLoaded', () => {
         validateForm();
     });
 
-    // Upload button click handler
-    uploadBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
+    // Main image upload area click handler
+    uploadArea.addEventListener('click', () => {
         imageInput.click();
     });
 
     // Main image drag and drop handlers
-    uploadArea.addEventListener('dragenter', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        uploadArea.classList.add('is-dragging');
-    });
-
     uploadArea.addEventListener('dragover', (e) => {
         e.preventDefault();
-        e.stopPropagation();
-        uploadArea.classList.add('is-dragging');
+        uploadArea.classList.add('drag-over');
     });
 
-    uploadArea.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!uploadArea.contains(e.relatedTarget)) {
-            uploadArea.classList.remove('is-dragging');
-        }
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('drag-over');
     });
 
-    uploadArea.addEventListener('drop', (e) => {
+    referenceImagesArea.addEventListener('drop', (e) => {
         e.preventDefault();
-        e.stopPropagation();
-        uploadArea.classList.remove('is-dragging');
-        
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const files = Array.from(e.dataTransfer.files);
-            addFiles(files);
-        }
+        uploadArea.classList.remove('drag-over');
+        const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+        handleFiles(files);
     });
 
     // Main image file input change handler
     imageInput.addEventListener('change', (e) => {
-        if (e.target.files && e.target.files.length > 0) {
-            const files = Array.from(e.target.files);
-            addFiles(files);
-        }
+        const files = Array.from(e.target.files);
+        handleFiles(files);
     });
 
     // Listing image upload button click handler
@@ -151,98 +123,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Format bytes helper
-    function formatBytes(bytes, decimals = 2) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const dm = decimals < 0 ? 0 : decimals;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-    }
-
-    // Validate file
-    function validateFile(file) {
-        const errors = [];
-        
-        if (file.size > MAX_FILE_SIZE) {
-            errors.push(`File "${file.name}" exceeds the maximum size of ${formatBytes(MAX_FILE_SIZE)}.`);
-        }
-        
-        if (!file.type.startsWith('image/')) {
-            errors.push(`File "${file.name}" is not an image file.`);
-        }
-        
-        return errors;
-    }
-
-    // Add files with validation
-    function addFiles(newFiles) {
-        clearErrors();
-        
-        const errors = [];
-        const validFiles = [];
-        
-        // Check if adding files would exceed max
-        if (uploadedFiles.length + newFiles.length > MAX_FILES) {
-            errors.push(`You can only upload a maximum of ${MAX_FILES} files.`);
-            showErrors(errors);
-            return;
-        }
-        
-        newFiles.forEach(file => {
-            // Check for duplicates
-            const isDuplicate = uploadedFiles.some(
-                existingFile => existingFile.name === file.name && existingFile.size === file.size
-            );
-            
-            if (isDuplicate) {
-                return; // Skip duplicates silently
-            }
-            
-            // Validate file
-            const fileErrors = validateFile(file);
-            if (fileErrors.length > 0) {
-                errors.push(...fileErrors);
-            } else {
-                validFiles.push(file);
+    // Handle main uploaded files
+    function handleFiles(files) {
+        files.forEach(file => {
+            if (!uploadedFiles.find(f => f.name === file.name && f.size === file.size)) {
+                uploadedFiles.push(file);
             }
         });
-        
-        if (validFiles.length > 0) {
-            uploadedFiles.push(...validFiles);
-            displayUploadedImages();
-            validateForm();
-        }
-        
-        if (errors.length > 0) {
-            showErrors(errors);
-        }
-        
-        // Reset input
-        imageInput.value = '';
-    }
-
-    // Remove file
-    function removeFile(fileIndex) {
-        const file = uploadedFiles[fileIndex];
-        if (file.preview) {
-            URL.revokeObjectURL(file.preview);
-        }
-        uploadedFiles.splice(fileIndex, 1);
-        displayUploadedImages();
-        validateForm();
-        clearErrors();
-    }
-
-    // Clear all files
-    function clearFiles() {
-        uploadedFiles.forEach(file => {
-            if (file.preview) {
-                URL.revokeObjectURL(file.preview);
-            }
-        });
-        uploadedFiles = [];
         displayUploadedImages();
         validateForm();
         clearErrors();
@@ -306,21 +193,41 @@ document.addEventListener('DOMContentLoaded', () => {
         listingImageInput.value = '';
     }
 
-    // Display listing image
-    function displayListingImage() {
-        if (!listingFilePreviewContainer || !listingUploadPlaceholder) {
+    // Display main uploaded images
+    function displayUploadedImages() {
+        uploadedImages.innerHTML = '';
+        
+        if (uploadedFiles.length === 0) {
             return;
         }
-        
-        // Clear previous preview
-        listingFilePreviewContainer.querySelectorAll('.file-preview-item').forEach(item => {
-            const img = item.querySelector('img');
-            if (img && img.src.startsWith('blob:')) {
+
+        uploadedFiles.forEach((file, index) => {
+            const imgContainer = document.createElement('div');
+            imgContainer.className = 'uploaded-image-item';
+            
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            img.alt = file.name;
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'remove-image-btn';
+            removeBtn.innerHTML = '×';
+            removeBtn.onclick = () => {
+                uploadedFiles.splice(index, 1);
                 URL.revokeObjectURL(img.src);
-            }
+                displayUploadedImages();
+                validateForm();
+            };
+            
+            imgContainer.appendChild(img);
+            imgContainer.appendChild(removeBtn);
+            uploadedImages.appendChild(imgContainer);
         });
-        
-        listingFilePreviewContainer.innerHTML = '';
+    }
+
+    // Display listing image
+    function displayListingImage() {
+        listingImagePreview.innerHTML = '';
         
         if (!listingImageFile) {
             listingUploadPlaceholder.style.display = 'block';
@@ -476,13 +383,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Validate form
     const validateForm = () => {
-        const hasImages = uploadedFiles.length > 0;
+        // Reference images are required for 3D model generation
+        const hasReferenceImages = referenceImages.length > 0;
         const hasProductName = productName.value.trim() !== '';
         const hasLength = length.value.trim() !== '' && parseFloat(length.value) > 0;
         const hasWidth = width.value.trim() !== '' && parseFloat(width.value) > 0;
         const hasHeight = height.value.trim() !== '' && parseFloat(height.value) > 0;
         
-        let isValid = hasImages && hasProductName && hasLength && hasWidth && hasHeight;
+        let isValid = hasReferenceImages && hasProductName && hasLength && hasWidth && hasHeight;
         
         // If listing is checked, validate listing fields
         if (isListingCheckbox.checked) {
@@ -594,74 +502,81 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         
         if (!submitBtn.disabled) {
-            if (isListingCheckbox.checked) {
-                // Save as listing to marketplace
-                try {
-                    // Get all existing listings from localStorage
-                    const existingListings = JSON.parse(localStorage.getItem('souffle_listings') || '[]');
-                    
-                    // Convert listing image to base64 for storage
-                    const listingImageBase64 = listingImageFile ? await fileToBase64(listingImageFile) : null;
-                    
-                    // Create new listing object
-                    const newListing = {
-                        id: Date.now(), // Use timestamp as ID
-                        name: productName.value,
-                        price: parseFloat(price.value),
-                        description: productDescription.value,
-                        image: listingImageBase64,
-                        dimensions: {
-                            length: parseFloat(length.value),
-                            width: parseFloat(width.value),
-                            height: parseFloat(height.value)
-                        },
-                        modelImages: [] // We'll store model images if needed later
-                    };
-                    
-                    // Add to listings array
-                    existingListings.push(newListing);
-                    
-                    // Save back to localStorage
-                    localStorage.setItem('souffle_listings', JSON.stringify(existingListings));
-                    
-                    // Show success message
-                    alert('Listing added to Marketplace!');
-                    
-                    // Redirect to marketplace
-                    window.location.href = 'index.html';
-                    
-                } catch (error) {
-                    console.error('Error saving listing:', error);
-                    alert('Error saving listing. Please try again.');
-                }
-            } else {
-                // Save as 3D model (not a listing)
-                const formData = {
-                    images: uploadedFiles,
-                    productName: productName.value,
-                    dimensions: {
-                        length: parseFloat(length.value),
-                        width: parseFloat(width.value),
-                        height: parseFloat(height.value)
+            try {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Processing...';
+                
+                // Create FormData to send to backend
+                const formData = new FormData();
+                
+                // Add display images (for product page)
+                displayImages.forEach((file) => {
+                    formData.append('displayImages', file);
+                });
+                
+                // Add reference images (for 3D model generation)
+                referenceImages.forEach((file) => {
+                    formData.append('referenceImages', file);
+                });
+                
+                // Add product information
+                formData.append('productName', productName.value);
+                formData.append('length', length.value);
+                formData.append('width', width.value);
+                formData.append('height', height.value);
+                
+                // Add listing-specific data if it's a listing
+                const isListing = isListingCheckbox.checked;
+                formData.append('isListing', isListing);
+                
+                if (isListing) {
+                    formData.append('description', productDescription.value);
+                    formData.append('price', price.value);
+                    if (listingImageFile) {
+                        formData.append('listingImage', listingImageFile);
                     }
-                };
+                }
                 
-                console.log('Form submitted (3D Model):', formData);
+                // Send to backend
+                const response = await fetch('http://localhost:5000/create-product', {
+                    method: 'POST',
+                    body: formData
+                });
                 
-                // Show success message (you can customize this)
-                alert('3D Model added to 3D Space!');
+                const result = await response.json();
                 
-                // Reset form
-                form.reset();
-                uploadedFiles = [];
-                listingImageFile = null;
-                uploadedImages.innerHTML = '';
-                listingImagePreview.innerHTML = '';
-                isListingCheckbox.checked = false;
-                listingFields.style.display = 'none';
-                submitBtn.textContent = 'Add to 3D Space';
-                displayUploadedImages();
-                validateForm();
+                if (response.ok) {
+                    alert(isListing ? 'Listing created! 3D model is being generated...' : '3D model is being generated...');
+                    
+                    // Reset form
+                    form.reset();
+                    displayImages = [];
+                    referenceImages = [];
+                    listingImageFile = null;
+                    displayImagesPreview.innerHTML = '';
+                    referenceImagesPreview.innerHTML = '';
+                    listingImagePreview.innerHTML = '';
+                    isListingCheckbox.checked = false;
+                    listingFields.style.display = 'none';
+                    submitBtn.textContent = 'Add to 3D Space';
+                    validateForm();
+                    
+                    // Optionally redirect
+                    if (isListing) {
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 2000);
+                    }
+                } else {
+                    alert(`Error: ${result.error || 'Failed to create product'}`);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = isListing ? 'Add Listing' : 'Add to 3D Space';
+                }
+            } catch (error) {
+                console.error('Error submitting form:', error);
+                alert('Error submitting form. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = isListingCheckbox.checked ? 'Add Listing' : 'Add to 3D Space';
             }
         }
     });
