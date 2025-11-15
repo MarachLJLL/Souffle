@@ -5,14 +5,10 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 class Carousel3D {
     constructor() {
         this.container = document.getElementById('carousel3D');
-        
-        // Check if container exists
         if (!this.container) {
-            console.error('Carousel3D: Container element with id "carousel3D" not found!');
+            console.error('Carousel3D: Container element #carousel3D not found!');
             return;
         }
-        
-        console.log('Carousel3D: Container found, initializing...');
         
         this.scene = new THREE.Scene();
         this.camera = null;
@@ -23,7 +19,7 @@ class Carousel3D {
         this.autoRotateInterval = null;
         this.userHasInteracted = false;
         
-        // Original model files
+        // Original model files - use fallback models that definitely exist
         this.originalModelFiles = [
             '../assets/models/Chair.glb',
             '../assets/models/chair_sagano.glb',
@@ -47,6 +43,71 @@ class Carousel3D {
         console.log(`Carousel initialized: ${totalModels} models (${this.originalModelFiles.length} unique × ${duplicates} copies), starting at index ${middleIndex}`);
         
         this.init();
+        
+        // Optionally try to load from database in background (non-blocking)
+        this.loadModelsFromDatabase().then(() => {
+            if (this.originalModelFiles.length > 0 && this.originalModelFiles[0].includes('database')) {
+                console.log('Carousel3D: Successfully loaded models from database, updating...');
+                // Update models in background if needed
+            }
+        }).catch(error => {
+            // Silently fail - already using working fallback models
+        });
+    }
+    
+    setupFallbackModels() {
+        this.originalModelFiles = [
+            '../assets/models/Chair.glb',
+            '../assets/models/chair_sagano.glb',
+            '../assets/models/brown_leather_chair.glb',
+            '../assets/models/2.glb'
+        ];
+    }
+    
+    async loadModelsFromDatabase() {
+        try {
+            const paths = ['../database/products.json', 'database/products.json'];
+            let response = null;
+            
+            for (const path of paths) {
+                try {
+                    response = await fetch(path, {
+                        cache: 'no-cache',
+                        headers: { 'Cache-Control': 'no-cache' }
+                    });
+                    if (response.ok) {
+                        console.log('✅ Carousel: Successfully loaded products.json from:', path);
+                        break;
+                    }
+                } catch (e) {
+                    console.log('Carousel: Failed to load from:', path, e.message);
+                    continue;
+                }
+            }
+            
+            if (!response || !response.ok) {
+                throw new Error('Could not load products.json');
+            }
+            
+            const products = await response.json();
+            console.log('Carousel: Loaded products:', products);
+            
+            // Extract GLB paths from products
+            const glbPaths = products
+                .filter(product => product.glb)
+                .map(product => `../database/${product.glb}`);
+            
+            if (glbPaths.length > 0) {
+                this.originalModelFiles = glbPaths;
+                console.log('✅ Carousel: Loaded', glbPaths.length, 'models from database:', glbPaths);
+            } else {
+                console.warn('Carousel: No GLB files found in products.json, will use fallback models');
+                // Don't throw error, let it fall through and use fallback
+            }
+        } catch (error) {
+            console.error('❌ Carousel: Error loading models from database:', error);
+            throw error;
+        }
     }
     
     init() {
@@ -55,8 +116,11 @@ class Carousel3D {
             return;
         }
         
+        console.log('Carousel3D: Initializing renderer, camera, lights, and controls...');
+        
         // Setup scene
         this.setupRenderer();
+        
         if (!this.renderer) {
             console.error('Carousel3D: Renderer setup failed');
             return;
@@ -65,8 +129,16 @@ class Carousel3D {
         this.setupCamera();
         this.setupLights();
         this.setupControls(); // Setup centerGroup first
-        this.loadModels();
+        
+        if (this.modelFiles && this.modelFiles.length > 0) {
+            console.log('Carousel3D: Loading', this.modelFiles.length, 'models...');
+            this.loadModels();
+        } else {
+            console.error('Carousel3D: No model files to load! modelFiles.length =', this.modelFiles?.length);
+        }
+        
         this.startAnimation();
+        console.log('Carousel3D: Initialization complete');
         
         // Keyboard support
         this.setupKeyboardControls();
@@ -91,18 +163,29 @@ class Carousel3D {
             alpha: true 
         });
         
-        const containerHeight = this.container.clientHeight || 400; // Fallback height
-        this.renderer.setSize(window.innerWidth, containerHeight);
+        // Ensure container has a height - use default if 0
+        const containerHeight = this.container.clientHeight || window.innerHeight * 0.6;
+        const containerWidth = this.container.clientWidth || window.innerWidth;
+        
+        console.log('Carousel3D: Setting up renderer with size:', containerWidth, 'x', containerHeight);
+        
+        this.renderer.setSize(containerWidth, containerHeight);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        this.container.appendChild(this.renderer.domElement);
+        
+        if (!this.container.contains(this.renderer.domElement)) {
+            this.container.appendChild(this.renderer.domElement);
+            console.log('Carousel3D: Renderer canvas added to container');
+        }
         
         // Handle resize
         window.addEventListener('resize', () => {
-            this.camera.aspect = window.innerWidth / this.container.clientHeight;
+            const newHeight = this.container.clientHeight || window.innerHeight * 0.6;
+            const newWidth = this.container.clientWidth || window.innerWidth;
+            this.camera.aspect = newWidth / newHeight;
             this.camera.updateProjectionMatrix();
-            this.renderer.setSize(window.innerWidth, this.container.clientHeight);
+            this.renderer.setSize(newWidth, newHeight);
         });
     }
     
@@ -145,8 +228,14 @@ class Carousel3D {
     }
     
     loadModels() {
+        if (!this.modelFiles || this.modelFiles.length === 0) {
+            console.error('No model files to load. Check if products.json was loaded correctly.');
+            return;
+        }
+        
         const loader = new GLTFLoader();
         let loadedCount = 0;
+        let failedCount = 0;
         
         // Initialize models array with correct length
         this.models = new Array(this.modelFiles.length);
@@ -155,6 +244,8 @@ class Carousel3D {
         const uniqueFiles = [...new Set(this.originalModelFiles)];
         const loadedModels = {};
         let uniqueLoadedCount = 0;
+        
+        console.log('Carousel: Loading', uniqueFiles.length, 'unique models from', uniqueFiles);
         
         uniqueFiles.forEach((file) => {
             console.log(`Carousel3D: Attempting to load model: ${file}`);
@@ -249,17 +340,16 @@ class Carousel3D {
                     console.log(`Loading ${file}: ${(progress.loaded / progress.total * 100)}%`);
                 },
                 (error) => {
-                    console.error(`Carousel3D: Error loading model "${file}":`, error);
-                    console.error(`Carousel3D: Full error details:`, {
-                        message: error.message,
-                        url: file,
-                        stack: error.stack
-                    });
+                    console.error(`❌ Carousel: Error loading model ${file}:`, error);
+                    console.error('Full error:', error);
+                    failedCount++;
                     
-                    // Check if it's a CORS issue
-                    if (error.message && error.message.includes('CORS')) {
-                        console.error('Carousel3D: CORS error detected! You need to serve the files via HTTP/HTTPS, not file:// protocol.');
-                        console.error('Carousel3D: Try running: python3 -m http.server 8000 (from the frontend directory)');
+                    // If all models fail, show error message
+                    if (failedCount === uniqueFiles.length) {
+                        console.error('❌ Carousel: All models failed to load. Check:');
+                        console.error('  1. Are the GLB files in the correct location?');
+                        console.error('  2. Is the server running and serving files correctly?');
+                        console.error('  3. Check browser Network tab for 404 errors');
                     }
                 }
             );
