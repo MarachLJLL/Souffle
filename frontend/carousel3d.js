@@ -5,6 +5,15 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 class Carousel3D {
     constructor() {
         this.container = document.getElementById('carousel3D');
+        
+        // Check if container exists
+        if (!this.container) {
+            console.error('Carousel3D: Container element with id "carousel3D" not found!');
+            return;
+        }
+        
+        console.log('Carousel3D: Container found, initializing...');
+        
         this.scene = new THREE.Scene();
         this.camera = null;
         this.renderer = null;
@@ -41,8 +50,18 @@ class Carousel3D {
     }
     
     init() {
+        if (!this.container) {
+            console.error('Carousel3D: Cannot initialize - container not found');
+            return;
+        }
+        
         // Setup scene
         this.setupRenderer();
+        if (!this.renderer) {
+            console.error('Carousel3D: Renderer setup failed');
+            return;
+        }
+        
         this.setupCamera();
         this.setupLights();
         this.setupControls(); // Setup centerGroup first
@@ -62,11 +81,18 @@ class Carousel3D {
     }
     
     setupRenderer() {
+        if (!this.container) {
+            console.error('Carousel3D: Cannot setup renderer - container not found');
+            return;
+        }
+        
         this.renderer = new THREE.WebGLRenderer({ 
             antialias: true,
             alpha: true 
         });
-        this.renderer.setSize(window.innerWidth, this.container.clientHeight);
+        
+        const containerHeight = this.container.clientHeight || 400; // Fallback height
+        this.renderer.setSize(window.innerWidth, containerHeight);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -131,9 +157,11 @@ class Carousel3D {
         let uniqueLoadedCount = 0;
         
         uniqueFiles.forEach((file) => {
+            console.log(`Carousel3D: Attempting to load model: ${file}`);
             loader.load(
                 file,
                 (gltf) => {
+                    console.log(`Carousel3D: Successfully loaded model: ${file}`);
                     const originalModel = gltf.scene;
                     
                     // Enable shadows on original
@@ -221,7 +249,18 @@ class Carousel3D {
                     console.log(`Loading ${file}: ${(progress.loaded / progress.total * 100)}%`);
                 },
                 (error) => {
-                    console.error('Error loading model:', error);
+                    console.error(`Carousel3D: Error loading model "${file}":`, error);
+                    console.error(`Carousel3D: Full error details:`, {
+                        message: error.message,
+                        url: file,
+                        stack: error.stack
+                    });
+                    
+                    // Check if it's a CORS issue
+                    if (error.message && error.message.includes('CORS')) {
+                        console.error('Carousel3D: CORS error detected! You need to serve the files via HTTP/HTTPS, not file:// protocol.');
+                        console.error('Carousel3D: Try running: python3 -m http.server 8000 (from the frontend directory)');
+                    }
                 }
             );
         });
