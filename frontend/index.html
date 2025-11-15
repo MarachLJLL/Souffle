@@ -15,9 +15,15 @@
             <div class="header-content">
                 <h1 class="logo">Soufflé</h1>
                 <nav class="nav">
-                    <a href="#" class="nav-link">3D space</a>
-                    <a href="#" class="nav-link">Marketplace</a>
-                    <a href="#" class="nav-link">Create listing</a>
+                    <div class="dropdown">
+                        <a href="#" class="nav-link dropdown-toggle">3D SPACE</a>
+                        <div class="dropdown-menu">
+                            <a href="create-3d-model.html" class="dropdown-item">Create 3D Model</a>
+                            <a href="#" class="dropdown-item">View 3D Space</a>
+                        </div>
+                    </div>
+                    <a href="index.html" class="nav-link">MARKETPLACE</a>
+                    <a href="#" class="nav-link">CREATE LISTING</a>
                     <button class="cart-btn" id="cartBtn">
                         <span>CART</span>
                         <span class="cart-count" id="cartCount">0</span>
@@ -31,9 +37,7 @@
     <section class="carousel-section">
         <div class="carousel-container" id="carousel3D"></div>
         <div class="carousel-controls">
-            <button class="carousel-btn prev-btn" id="prevBtn">←</button>
             <div class="carousel-indicators" id="carouselIndicators"></div>
-            <button class="carousel-btn next-btn" id="nextBtn">→</button>
         </div>
     </section>
 

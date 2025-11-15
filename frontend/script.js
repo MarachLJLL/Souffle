@@ -1,6 +1,6 @@
 // Product data based on the original site with varying sizes
 // Images cycle through: vase.png, vase2.png, cat_tree.png, egg.png
-const products = [
+const defaultProducts = [
     { id: 1, name: "Candle holder 04", price: 50, image: "../assets/products/vase.png", size: "normal" },
     { id: 2, name: "Candle Holder Shadow", price: 250, image: "../assets/products/vase2.png", size: "large" },
     { id: 3, name: "Super Combo Set 03", price: 155, image: "../assets/products/cat_tree.png", size: "wide" },
@@ -25,11 +25,36 @@ const products = [
     { id: 22, name: "Wick scissors", price: 17, image: "../assets/products/vase2.png", size: "normal" }
 ];
 
+// Load listings from localStorage and merge with default products
+function loadProducts() {
+    const savedListings = JSON.parse(localStorage.getItem('souffle_listings') || '[]');
+    
+    // Convert listings to product format (with base64 images)
+    const listingProducts = savedListings.map(listing => ({
+        id: listing.id,
+        name: listing.name,
+        price: listing.price,
+        image: listing.image, // base64 image
+        size: "normal",
+        isListing: true, // Flag to identify user-created listings
+        description: listing.description,
+        dimensions: listing.dimensions
+    }));
+    
+    // Combine default products with listings
+    return [...defaultProducts, ...listingProducts];
+}
+
+// Initialize products array
+let products = loadProducts();
+
 // Cart state
 let cart = [];
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    // Reload products from localStorage (in case new listings were added)
+    products = loadProducts();
     renderProducts();
     loadCart();
     updateCartUI();

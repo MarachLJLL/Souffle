@@ -18,7 +18,7 @@ class Carousel3D {
             '../assets/models/Chair.glb',
             '../assets/models/chair_sagano.glb',
             '../assets/models/brown_leather_chair.glb',
-            '../assets/models/gamingchair.glb'
+            '../assets/models/2.glb'
         ];
         
         this.init();
@@ -33,15 +33,14 @@ class Carousel3D {
         this.loadModels();
         this.startAnimation();
         
-        // Event listeners
-        document.getElementById('nextBtn').addEventListener('click', () => this.next());
-        document.getElementById('prevBtn').addEventListener('click', () => this.prev());
-        
         // Keyboard support
         this.setupKeyboardControls();
         
         // Touch/swipe support
         this.setupTouchControls();
+        
+        // Click detection for models
+        this.setupModelClickDetection();
     }
     
     setupRenderer() {
@@ -171,16 +170,54 @@ class Carousel3D {
         // Store initial camera position
         this.initialCameraPosition = this.camera.position.clone();
         
+        // Auto-rotation settings
+        this.autoRotationSpeed = 0.003; // Slow rotation speed (radians per frame)
+        this.autoRotationEnabled = true;
+        this.userInteractionTimeout = null;
+        this.resumeAutoRotationDelay = 2000; // Resume auto-rotation after 2 seconds of no interaction
+        
         // Track mouse for manual rotation
         let isDragging = false;
         let lastMouseX = 0;
         let rotationSpeed = 0;
+        let mouseDownX = 0;
+        let mouseDownY = 0;
+        let hasUserInteracted = false; // Track if user has manually rotated
+        
+        const stopAutoRotation = () => {
+            this.autoRotationEnabled = false;
+            hasUserInteracted = true;
+            
+            // Clear any existing timeout
+            if (this.userInteractionTimeout) {
+                clearTimeout(this.userInteractionTimeout);
+                this.userInteractionTimeout = null;
+            }
+        };
+        
+        const resumeAutoRotation = () => {
+            // Clear any existing timeout
+            if (this.userInteractionTimeout) {
+                clearTimeout(this.userInteractionTimeout);
+            }
+            
+            // Resume auto-rotation after delay
+            this.userInteractionTimeout = setTimeout(() => {
+                this.autoRotationEnabled = true;
+                hasUserInteracted = false;
+                rotationSpeed = 0; // Reset manual rotation speed
+            }, this.resumeAutoRotationDelay);
+        };
         
         this.renderer.domElement.addEventListener('mousedown', (e) => {
+            mouseDownX = e.clientX;
+            mouseDownY = e.clientY;
+            
             if (!this.isAnimating && this.centerGroup.children.length > 0) {
                 isDragging = true;
                 lastMouseX = e.clientX;
                 this.renderer.domElement.style.cursor = 'grabbing';
+                stopAutoRotation();
             }
         });
         
@@ -190,17 +227,38 @@ class Carousel3D {
                 rotationSpeed = deltaX * 0.01; // Rotation sensitivity
                 this.centerGroup.rotation.y += rotationSpeed;
                 lastMouseX = e.clientX;
+                stopAutoRotation(); // Keep auto-rotation disabled while dragging
             }
         });
         
-        this.renderer.domElement.addEventListener('mouseup', () => {
+        this.renderer.domElement.addEventListener('mouseup', (e) => {
+            // Check if this was a click (not a drag)
+            const deltaX = Math.abs(e.clientX - mouseDownX);
+            const deltaY = Math.abs(e.clientY - mouseDownY);
+            const isClick = deltaX < 5 && deltaY < 5; // Small movement threshold
+            
+            if (isClick && !this.isAnimating) {
+                // Handle model click
+                this.handleModelClick(e);
+            }
+            
             isDragging = false;
             this.renderer.domElement.style.cursor = 'grab';
+            
+            // Resume auto-rotation after user stops interacting
+            if (hasUserInteracted) {
+                resumeAutoRotation();
+            }
         });
         
         this.renderer.domElement.addEventListener('mouseleave', () => {
             isDragging = false;
             this.renderer.domElement.style.cursor = 'grab';
+            
+            // Resume auto-rotation when mouse leaves
+            if (hasUserInteracted) {
+                resumeAutoRotation();
+            }
         });
         
         // Disable default drag behavior
@@ -208,15 +266,90 @@ class Carousel3D {
             e.preventDefault();
         });
         
-        // Add momentum/damping
+        // Auto-rotation and momentum/damping loop
         setInterval(() => {
-            if (!isDragging && !this.isAnimating && Math.abs(rotationSpeed) > 0.001) {
-                rotationSpeed *= 0.95; // Damping
-                if (this.centerGroup.children.length > 0) {
+            if (!this.isAnimating && this.centerGroup.children.length > 0) {
+                if (this.autoRotationEnabled && !isDragging && !hasUserInteracted) {
+                    // Auto-rotate when idle
+                    this.centerGroup.rotation.y += this.autoRotationSpeed;
+                } else if (hasUserInteracted && !isDragging && Math.abs(rotationSpeed) > 0.001) {
+                    // Apply momentum/damping when user stops dragging
+                    rotationSpeed *= 0.95; // Damping
                     this.centerGroup.rotation.y += rotationSpeed;
                 }
             }
         }, 16);
+    }
+    
+    setupModelClickDetection() {
+        // Raycaster for detecting clicks on models
+        this.raycaster = new THREE.Raycaster();
+        this.mouse = new THREE.Vector2();
+    }
+    
+    handleModelClick(event) {
+        // Calculate mouse position in normalized device coordinates
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        
+        // Update raycaster with camera and mouse position
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        
+        // Find all visible models (only check the 3 visible ones)
+        const visibleModels = [];
+        this.models.forEach((model, index) => {
+            const relativeIndex = (index - this.currentIndex + this.models.length) % this.models.length;
+            const isVisible = relativeIndex === 0 || relativeIndex === 1 || relativeIndex === this.models.length - 1;
+            
+            if (isVisible) {
+                // Collect all meshes from this model
+                model.traverse((child) => {
+                    if (child.isMesh && child.visible) {
+                        visibleModels.push({
+                            mesh: child,
+                            modelIndex: index,
+                            relativeIndex: relativeIndex
+                        });
+                    }
+                });
+            }
+        });
+        
+        // Intersect with visible models
+        const intersects = this.raycaster.intersectObjects(
+            visibleModels.map(item => item.mesh),
+            true
+        );
+        
+        if (intersects.length > 0) {
+            // Find which model was clicked
+            const clickedMesh = intersects[0].object;
+            const clickedItem = visibleModels.find(item => {
+                // Check if the clicked mesh belongs to this model
+                let found = false;
+                this.models[item.modelIndex].traverse((child) => {
+                    if (child === clickedMesh) {
+                        found = true;
+                    }
+                });
+                return found;
+            });
+            
+            if (clickedItem) {
+                const relativeIndex = clickedItem.relativeIndex;
+                
+                // Navigate based on which model was clicked
+                if (relativeIndex === 1) {
+                    // Right model clicked - go to next
+                    this.next();
+                } else if (relativeIndex === this.models.length - 1) {
+                    // Left model clicked - go to previous
+                    this.prev();
+                }
+                // Center model (relativeIndex === 0) - do nothing, just rotate
+            }
+        }
     }
     
     positionModel(model, index) {
@@ -373,107 +506,103 @@ class Carousel3D {
             indicator.classList.toggle('active', index === this.targetIndex);
         });
         
-        const sideOffset = 5; // Distance from center for side models
-        const frontOffset = 0; // Keep at same depth
-        const sideScale = 0.75; // Scale for side models
-        const centerScale = 1.2; // Center model bigger
-        const offScreenOffset = 15; // Off-screen position (hidden)
+        const sideOffset = 5;
+        const sideScale = 0.75;
+        const centerScale = 1.2;
+        const offScreenOffset = 20; // Far off-screen
         
-        // Calculate start and end positions based on array rotation logic
+        // Simple approach: Only animate the 3 visible items, others stay hidden
         const startPositions = [];
         const startScales = [];
         const endPositions = [];
         const endScales = [];
-        const isWrapping = []; // Track which items are teleporting
-        const startVisible = []; // Track visibility at start
-        const endVisible = []; // Track visibility at end
+        const shouldShow = []; // Whether item should be visible during animation
         
         this.models.forEach((model, index) => {
             const baseScale = model.userData.baseScale;
             const yOffset = model.userData.yOffset;
             
-            // Calculate relative position from start index
-            const startRelativeIndex = (index - startIndex + this.models.length) % this.models.length;
-            let startX, startScale;
+            // Get relative positions
+            const startRelIdx = (index - startIndex + this.models.length) % this.models.length;
+            const endRelIdx = (index - endIndex + this.models.length) % this.models.length;
             
-            if (startRelativeIndex === 0) {
-                // Center
+            // Determine start position
+            let startX, startScaleVal;
+            if (startRelIdx === 0) {
                 startX = 0;
-                startScale = baseScale * centerScale;
-            } else if (startRelativeIndex === 1) {
-                // Right side
+                startScaleVal = baseScale * centerScale;
+            } else if (startRelIdx === 1) {
                 startX = sideOffset;
-                startScale = baseScale * sideScale;
-            } else if (startRelativeIndex === this.models.length - 1) {
-                // Left side
+                startScaleVal = baseScale * sideScale;
+            } else if (startRelIdx === this.models.length - 1) {
                 startX = -sideOffset;
-                startScale = baseScale * sideScale;
+                startScaleVal = baseScale * sideScale;
             } else {
-                // Off-screen
-                startX = startRelativeIndex > 1 ? offScreenOffset : -offScreenOffset;
-                startScale = baseScale * sideScale;
+                startX = startRelIdx > 1 ? offScreenOffset : -offScreenOffset;
+                startScaleVal = baseScale * sideScale;
             }
             
-            startPositions.push(new THREE.Vector3(startX, yOffset, frontOffset));
-            startScales.push(startScale);
-            
-            // Calculate relative position from end index
-            const endRelativeIndex = (index - endIndex + this.models.length) % this.models.length;
-            let endX, endScale, wrapping = false;
-            
-            if (endRelativeIndex === 0) {
-                // Center
+            // Determine end position
+            let endX, endScaleVal;
+            if (endRelIdx === 0) {
                 endX = 0;
-                endScale = baseScale * centerScale;
-            } else if (endRelativeIndex === 1) {
-                // Right side
+                endScaleVal = baseScale * centerScale;
+            } else if (endRelIdx === 1) {
                 endX = sideOffset;
-                endScale = baseScale * sideScale;
-            } else if (endRelativeIndex === this.models.length - 1) {
-                // Left side
+                endScaleVal = baseScale * sideScale;
+            } else if (endRelIdx === this.models.length - 1) {
                 endX = -sideOffset;
-                endScale = baseScale * sideScale;
+                endScaleVal = baseScale * sideScale;
             } else {
-                // Off-screen
-                endX = endRelativeIndex > 1 ? offScreenOffset : -offScreenOffset;
-                endScale = baseScale * sideScale;
+                endX = endRelIdx > 1 ? offScreenOffset : -offScreenOffset;
+                endScaleVal = baseScale * sideScale;
             }
             
-            // Only show 3 items: center (0), right (1), left (models.length - 1)
-            // All others should be hidden (off-screen and invisible)
-            const wasVisible = startRelativeIndex === 0 || startRelativeIndex === 1 || startRelativeIndex === this.models.length - 1;
-            const willBeVisible = endRelativeIndex === 0 || endRelativeIndex === 1 || endRelativeIndex === this.models.length - 1;
+            // Simple visibility logic: only 3 items are visible at any time
+            // center (0), right (1), left (models.length - 1)
+            const isCurrentlyVisible = startRelIdx === 0 || startRelIdx === 1 || startRelIdx === this.models.length - 1;
+            const willBeVisible = endRelIdx === 0 || endRelIdx === 1 || endRelIdx === this.models.length - 1;
+            const isExiting = isCurrentlyVisible && !willBeVisible;
+            const isEntering = !isCurrentlyVisible && willBeVisible;
+            const isStayingVisible = isCurrentlyVisible && willBeVisible;
             
-            // Check if this item is wrapping (teleporting from one side to the other)
-            // For smooth simultaneous movement, items should start from their current visible position
-            // and exit/enter smoothly without teleporting
-            if (wasVisible && !willBeVisible) {
-                // Item is exiting - keep it at its current visible position, it will animate off
-                // Don't teleport it, let it animate smoothly off-screen
-                wrapping = false; // Not wrapping, just exiting smoothly
-            } else if (!wasVisible && willBeVisible) {
-                // Item is entering - start it off-screen on the entry side
+            // For exiting items: instantly position off-screen (invisible from start)
+            if (isExiting) {
                 if (direction === 1) {
-                    // Entering from left - start off-screen left
-                    startPositions[index].x = -offScreenOffset;
+                    // Exiting right - position off-screen right immediately (invisible)
+                    startX = offScreenOffset;
                 } else {
-                    // Entering from right - start off-screen right
-                    startPositions[index].x = offScreenOffset;
+                    // Exiting left - position off-screen left immediately (invisible)
+                    startX = -offScreenOffset;
                 }
-                wrapping = false; // It's entering, not wrapping
             }
             
-            // Store visibility state - items that are visible should start visible
-            // Items entering should start invisible and fade in
-            // Items exiting should start visible and fade out
-            const startVis = wasVisible; // If it was visible, it starts visible
-            const endVis = willBeVisible;
+            // For entering items: start them very close to final position (almost there)
+            // This prevents glitching - they appear almost at final position
+            if (isEntering) {
+                // Start at 95% of the way to final position (very close)
+                // If endX is -5 (left), start at -4.75
+                // If endX is 5 (right), start at 4.75
+                // If endX is 0 (center), start at 0 (already there)
+                if (endX !== 0) {
+                    startX = endX * 0.95; // 95% of the way there
+                } else {
+                    // If entering center, start slightly offset
+                    startX = direction === 1 ? -0.25 : 0.25;
+                }
+            }
             
-            endPositions.push(new THREE.Vector3(endX, yOffset, frontOffset));
-            endScales.push(endScale);
-            isWrapping.push(wrapping);
-            startVisible.push(startVis);
-            endVisible.push(endVis);
+            startPositions.push(new THREE.Vector3(startX, yOffset, 0));
+            startScales.push(startScaleVal);
+            endPositions.push(new THREE.Vector3(endX, yOffset, 0));
+            endScales.push(endScaleVal);
+            shouldShow.push({ 
+                show: isStayingVisible || isEntering, 
+                isExiting, 
+                isEntering, 
+                wasVisible: isCurrentlyVisible, 
+                willBeVisible 
+            });
         });
         
         // Animate models
@@ -495,35 +624,34 @@ class Carousel3D {
                 const endPos = endPositions[index];
                 const startScale = startScales[index];
                 const endScale = endScales[index];
-                const wrapping = isWrapping[index];
-                const startVis = startVisible[index];
-                const endVis = endVisible[index];
+                const visInfo = shouldShow[index];
                 
-                // Calculate current visibility - all items animate smoothly
+                // Calculate opacity - simple logic
                 let opacity = 0;
-                if (startVis && endVis) {
-                    // Item stays visible - always visible
+                
+                if (visInfo.isExiting) {
+                    // Exiting items: invisible immediately (don't show moving through back)
+                    opacity = 0;
+                } else if (visInfo.isEntering) {
+                    // Entering items: fade in quickly from the start since they're already close
+                    // They're positioned 90% there, so fade in over the whole animation
+                    opacity = ease; // Smooth fade in
+                } else if (visInfo.show && visInfo.wasVisible && visInfo.willBeVisible) {
+                    // Staying visible: always visible
                     opacity = 1;
-                } else if (startVis && !endVis) {
-                    // Item is exiting - fade out smoothly
-                    opacity = 1 - ease;
-                } else if (!startVis && endVis) {
-                    // Item is entering - fade in smoothly
-                    opacity = ease;
                 } else {
-                    // Item stays hidden
+                    // Off-screen: invisible
                     opacity = 0;
                 }
                 
-                // All items animate smoothly - no teleporting
-                // This ensures simultaneous movement: exiting items move out while entering items move in
+                // Always animate position (items move invisibly if needed)
                 model.position.lerpVectors(startPos, endPos, ease);
                 
                 // Interpolate scale
                 const currentScale = startScale + (endScale - startScale) * ease;
                 model.scale.setScalar(currentScale);
                 
-                // Set visibility/opacity for all meshes
+                // Set visibility/opacity
                 model.traverse((child) => {
                     if (child.isMesh) {
                         if (child.material) {
@@ -537,7 +665,6 @@ class Carousel3D {
                                 child.material.opacity = opacity;
                             }
                         }
-                        // Also set visible property
                         child.visible = opacity > 0.01;
                     }
                 });
@@ -572,27 +699,29 @@ class Carousel3D {
                 this.models.forEach((model, index) => {
                     const finalEndPos = endPositions[index];
                     const finalEndScale = endScales[index];
-                    const finalVisible = endVisible[index];
+                    const visInfo = shouldShow[index];
+                    const finalVisible = visInfo.willBeVisible;
                     
-                    // Final position - all items should be at their target positions
+                    // Final position
                     model.position.copy(finalEndPos);
                     model.scale.setScalar(finalEndScale);
                     
                     // Set final visibility - only show the 3 visible items
+                    const finalOpacity = finalVisible ? 1 : 0;
                     model.traverse((child) => {
                         if (child.isMesh) {
                             if (child.material) {
                                 if (Array.isArray(child.material)) {
                                     child.material.forEach(mat => {
                                         mat.transparent = true;
-                                        mat.opacity = finalVisible ? 1 : 0;
+                                        mat.opacity = finalOpacity;
                                     });
                                 } else {
                                     child.material.transparent = true;
-                                    child.material.opacity = finalVisible ? 1 : 0;
+                                    child.material.opacity = finalOpacity;
                                 }
                             }
-                            child.visible = finalVisible;
+                            child.visible = finalOpacity > 0.01;
                         }
                     });
                     
