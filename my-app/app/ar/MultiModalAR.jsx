@@ -370,22 +370,20 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
         instance.position.setFromMatrixPosition(reticle.matrix);
         instance.quaternion.setFromRotationMatrix(reticle.matrix);
 
-        // Measure bounding box in current pose (world space)
-        const box = new THREE.Box3().setFromObject(instance);
+        // Measure an oriented bounding box in the model's local space,
+        // then parent the helper to the instance so it follows rotation.
+        instance.updateWorldMatrix(true, true);
+        const worldBox = new THREE.Box3().setFromObject(instance);
+        const invWorld = new THREE.Matrix4().copy(instance.matrixWorld).invert();
+        // Transform world-aligned box into the instance's local space
+        worldBox.applyMatrix4(invWorld);
+
         const size = new THREE.Vector3();
-        const centerWorld = new THREE.Vector3();
-        box.getSize(size);
-        box.getCenter(centerWorld);
-        const worldQuat = new THREE.Quaternion();
-        instance.getWorldQuaternion(worldQuat);
+        const centerLocal = new THREE.Vector3();
+        worldBox.getSize(size);
+        worldBox.getCenter(centerLocal);
 
-        // Store for overlay reference if desired
-        boundingInfosRef.current[index] = {
-          size: size.clone(),
-          center: centerWorld.clone(),
-        };
-
-        // Create or update a helper group (in world space, parented to scene)
+        // Create or update a helper group (local-space helper, parented to the instance)
         let helperGroup = helpers[index];
         if (helperGroup && helperGroup.parent) {
           helperGroup.parent.remove(helperGroup);
@@ -436,20 +434,22 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
           return sprite;
         };
 
+        // Prefer input dimensions from modelRealSizes for label text (no fallback to approximations)
+        const inputDims = modelRealSizes && modelRealSizes[index];
         // Length (X) label – centered along the front-top edge
-        const lengthLabel = makeLabelSprite(`${size.x.toFixed(2)}m`);
+        const lengthLabel = makeLabelSprite(`${Number(inputDims.length).toFixed(2)}m`);
         const lengthScale = Math.max(size.x, 0.15) * 0.5;
         lengthLabel.scale.set(lengthScale, lengthScale * 0.18, 1);
         lengthLabel.position.set(0, size.y / 2 + 0.05, size.z / 2);
 
         // Height (Y) label – along a vertical edge on the front-right corner
-        const heightLabel = makeLabelSprite(`${size.y.toFixed(2)}m`);
+        const heightLabel = makeLabelSprite(`${Number(inputDims.height).toFixed(2)}m`);
         const heightScale = Math.max(size.y, 0.15) * 0.5;
         heightLabel.scale.set(heightScale, heightScale * 0.18, 1);
         heightLabel.position.set(size.x / 2 + 0.05, 0, size.z / 2);
 
         // Width/Depth (Z) label – centered along the right-top edge
-        const widthLabel = makeLabelSprite(`${size.z.toFixed(2)}m`);
+        const widthLabel = makeLabelSprite(`${Number(inputDims.width).toFixed(2)}m`);
         const widthScale = Math.max(size.z, 0.15) * 0.5;
         widthLabel.scale.set(widthScale, widthScale * 0.18, 1);
         widthLabel.position.set(size.x / 2, size.y / 2 + 0.05, 0);
@@ -460,12 +460,13 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
         helperGroup.add(lengthLabel);
         helperGroup.add(heightLabel);
         helperGroup.add(widthLabel);
-        helperGroup.position.copy(centerWorld);
-        helperGroup.quaternion.copy(worldQuat);
+        // Position helper at the model's center in local space so it rotates with the instance
+        helperGroup.position.copy(centerLocal);
         helperGroup.visible = showBounds && index === selectedIndexRef.current;
         helpers[index] = helperGroup;
 
-        scene.add(helperGroup);
+        // Parent helper to the instance so it rotates/moves with the model
+        instance.add(helperGroup);
       });
       scene.add(controller);
 
@@ -680,13 +681,13 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
                 </div>
 
                 {/* Info / dimensions / errors */}
-                {modelDimensions[selectedIndex] && (
+                {modelRealSizes && modelRealSizes[selectedIndex] && (
                   <p className="text-[10px] text-gray-300">
-                    {`Approx size: ${modelDimensions[selectedIndex].x.toFixed(
+                    {`Size: ${Number(modelRealSizes[selectedIndex].length).toFixed(
                       2
-                    )}m × ${modelDimensions[selectedIndex].y.toFixed(
+                    )}m × ${Number(modelRealSizes[selectedIndex].height).toFixed(
                       2
-                    )}m × ${modelDimensions[selectedIndex].z.toFixed(2)}m (L×H×D)`}
+                    )}m × ${Number(modelRealSizes[selectedIndex].width).toFixed(2)}m (L×H×W)`}
                   </p>
                 )}
                 {realifyError && (
