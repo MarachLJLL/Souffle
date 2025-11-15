@@ -1,0 +1,113 @@
+:root {
+  --primary-color: #5a4fcf;
+  --background-color: #f4f4f9;
+  --card-background: #ffffff;
+  --text-color: #333;
+  --border-color: #ddd;
+  --status-pending: #ffc107;
+  --status-ready: #28a745;
+  --status-failed: #dc3545;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+.container {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 20px;
+}
+
+/* Form Styles */
+.form-container {
+  background: var(--card-background);
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  margin-bottom: 2.5rem;
+}
+
+h1 { color: var(--primary-color); text-align: center; margin-top: 0; }
+.form-group { margin-bottom: 1.5rem; }
+label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
+input[type="text"], input[type="file"] { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; }
+button { width: 100%; padding: 12px 15px; background-color: var(--primary-color); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background-color 0.2s; }
+button:hover:not(:disabled) { background-color: #4a40b0; }
+button:disabled { background-color: #ccc; cursor: not-allowed; }
+.error-text { color: var(--status-failed); font-weight: bold; margin: 0; }
+
+/* Job List Styles */
+h2 { color: #444; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; }
+.jobs-list { display: grid; gap: 20px; }
+
+.job-card {
+  background: var(--card-background);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-left: 5px solid var(--border-color);
+  overflow: hidden;
+}
+
+.job-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+.job-header h3 { margin: 0; font-size: 1.2rem; }
+.job-status {
+  font-weight: bold;
+  padding: 5px 12px;
+  border-radius: 15px;
+  color: white;
+  font-size: 0.9rem;
+}
+.status-pending .job-status { background-color: var(--status-pending); color: #212529; }
+.status-ready .job-status { background-color: var(--status-ready); }
+.status-failed .job-status { background-color: var(--status-failed); }
+
+.job-body { padding: 20px; }
+.job-body p { margin: 0 0 10px 0; }
+.job-body p:last-child { margin-bottom: 0; }
+
+/* Progress Bar */
+.progress-bar {
+  width: 100%;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  height: 20px;
+  margin-top: 10px;
+}
+.progress-bar-inner {
+  height: 100%;
+  background-color: var(--primary-color);
+  color: white;
+  text-align: center;
+  font-size: 12px;
+  line-height: 20px;
+  transition: width 0.4s ease;
+}
+
+/* Download Button */
+.download-button {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 10px 15px;
+  background-color: var(--status-ready);
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+  font-weight: bold;
+  transition: background-color 0.2s;
+  box-sizing: border-box;
+  margin-top: 10px;
+}
+.download-button:hover { background-color: #218838; }
