@@ -9,17 +9,33 @@ class Carousel3D {
         this.camera = null;
         this.renderer = null;
         this.models = [];
-        this.currentIndex = 0;
-        this.targetIndex = 0;
         this.isAnimating = false;
+        this.autoRotateEnabled = true;
+        this.autoRotateInterval = null;
+        this.userHasInteracted = false;
         
-        // Model files
-        this.modelFiles = [
+        // Original model files
+        this.originalModelFiles = [
             '../assets/models/Chair.glb',
             '../assets/models/chair_sagano.glb',
             '../assets/models/brown_leather_chair.glb',
             '../assets/models/2.glb'
         ];
+        
+        // Duplicate models 10 times for continuous rotation (ensures plenty of models on both sides)
+        this.modelFiles = [];
+        const duplicates = 10;
+        for (let i = 0; i < duplicates; i++) {
+            this.modelFiles.push(...this.originalModelFiles);
+        }
+        
+        // Set initial index to middle of the duplicated array
+        const totalModels = this.modelFiles.length;
+        const middleIndex = Math.floor(totalModels / 2);
+        this.currentIndex = middleIndex;
+        this.targetIndex = middleIndex;
+        
+        console.log(`Carousel initialized: ${totalModels} models (${this.originalModelFiles.length} unique × ${duplicates} copies), starting at index ${middleIndex}`);
         
         this.init();
     }
@@ -41,6 +57,8 @@ class Carousel3D {
         
         // Click detection for models
         this.setupModelClickDetection();
+        
+        // Auto-rotation will start after models are loaded
     }
     
     setupRenderer() {
@@ -104,14 +122,22 @@ class Carousel3D {
         const loader = new GLTFLoader();
         let loadedCount = 0;
         
-        this.modelFiles.forEach((file, index) => {
+        // Initialize models array with correct length
+        this.models = new Array(this.modelFiles.length);
+        
+        // First, load all unique models
+        const uniqueFiles = [...new Set(this.originalModelFiles)];
+        const loadedModels = {};
+        let uniqueLoadedCount = 0;
+        
+        uniqueFiles.forEach((file) => {
             loader.load(
                 file,
                 (gltf) => {
-                    const model = gltf.scene;
+                    const originalModel = gltf.scene;
                     
-                    // Enable shadows
-                    model.traverse((child) => {
+                    // Enable shadows on original
+                    originalModel.traverse((child) => {
                         if (child.isMesh) {
                             child.castShadow = true;
                             child.receiveShadow = true;
@@ -124,24 +150,58 @@ class Carousel3D {
                     });
                     
                     // Center and scale model - make all similarly sized
-                    const box = new THREE.Box3().setFromObject(model);
+                    const box = new THREE.Box3().setFromObject(originalModel);
                     const center = box.getCenter(new THREE.Vector3());
                     const size = box.getSize(new THREE.Vector3());
                     
                     const maxDim = Math.max(size.x, size.y, size.z);
                     const baseScale = 3.0 / maxDim; // Bigger base scale for more prominent models
-                    model.scale.setScalar(baseScale);
+                    originalModel.scale.setScalar(baseScale);
                     
-                    // Store the base scale and Y offset
-                    model.userData.baseScale = baseScale;
-                    model.userData.yOffset = -center.y * baseScale;
-                    model.userData.index = index;
+                    // Store the base scale and Y offset on original
+                    originalModel.userData.baseScale = baseScale;
+                    originalModel.userData.yOffset = -center.y * baseScale;
                     
-                    this.models.push(model);
+                    // Cache the original model
+                    loadedModels[file] = originalModel;
+                    uniqueLoadedCount++;
                     
-                    loadedCount++;
-                    if (loadedCount === this.modelFiles.length) {
-                        // Position all models after loading
+                    // Now create all instances of this model for the duplicated array
+                    this.modelFiles.forEach((modelFile, index) => {
+                        if (modelFile === file) {
+                            // Clone the model for this instance
+                            const clonedModel = originalModel.clone();
+                            
+                            // Deep clone materials to avoid sharing
+                            clonedModel.traverse((child) => {
+                                if (child.isMesh) {
+                                    if (child.material) {
+                                        if (Array.isArray(child.material)) {
+                                            child.material = child.material.map(mat => mat.clone());
+                                        } else {
+                                            child.material = child.material.clone();
+                                        }
+                                    }
+                                }
+                            });
+                            
+                            clonedModel.userData.baseScale = baseScale;
+                            clonedModel.userData.yOffset = -center.y * baseScale;
+                            clonedModel.userData.index = index;
+                            
+                            this.models[index] = clonedModel;
+                            loadedCount++;
+                        }
+                    });
+                    
+                    // Check if all unique models are loaded and all instances created
+                    if (uniqueLoadedCount === uniqueFiles.length && loadedCount === this.modelFiles.length) {
+                        // Ensure we're at the middle index
+                        const middleIndex = Math.floor(this.modelFiles.length / 2);
+                        this.currentIndex = middleIndex;
+                        this.targetIndex = middleIndex;
+                        
+                        // Position all models after loading (using the middle index)
                         this.models.forEach((m, idx) => {
                             this.positionModel(m, idx);
                             if (m.parent !== this.centerGroup) {
@@ -149,6 +209,11 @@ class Carousel3D {
                             }
                         });
                         this.createIndicators();
+                        
+                        console.log(`Models loaded and positioned. Starting at index ${this.currentIndex} (middle of ${this.modelFiles.length} models)`);
+                        
+                        // Start auto-rotation after models are loaded
+                        this.startAutoRotate();
                     }
                 },
                 (progress) => {
@@ -342,9 +407,11 @@ class Carousel3D {
                 // Navigate based on which model was clicked
                 if (relativeIndex === 1) {
                     // Right model clicked - go to next
+                    this.stopAutoRotate(); // Stop auto-rotation on click
                     this.next();
                 } else if (relativeIndex === this.models.length - 1) {
                     // Left model clicked - go to previous
+                    this.stopAutoRotate(); // Stop auto-rotation on click
                     this.prev();
                 }
                 // Center model (relativeIndex === 0) - do nothing, just rotate
@@ -438,12 +505,14 @@ class Carousel3D {
         
         this.container.addEventListener('touchstart', (e) => {
             touchStartX = e.changedTouches[0].screenX;
+            this.stopAutoRotate(); // Stop auto-rotation on touch
         });
         
         this.container.addEventListener('touchend', (e) => {
             touchEndX = e.changedTouches[0].screenX;
             const swipeDistance = touchEndX - touchStartX;
             if (Math.abs(swipeDistance) > 50) {
+                this.stopAutoRotate(); // Stop auto-rotation on swipe
                 if (swipeDistance > 0) {
                     this.prev();
                 } else {
@@ -457,6 +526,7 @@ class Carousel3D {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
                 e.preventDefault();
+                this.stopAutoRotate(); // Stop auto-rotation on keyboard interaction
                 if (e.key === 'ArrowRight') {
                     this.next();
                 } else {
@@ -468,18 +538,42 @@ class Carousel3D {
     
     next() {
         if (this.isAnimating) return;
+        this.stopAutoRotate(); // Stop auto-rotation on user interaction
         this.targetIndex = (this.currentIndex + 1) % this.models.length;
         this.updateCarousel();
     }
     
     prev() {
         if (this.isAnimating) return;
+        this.stopAutoRotate(); // Stop auto-rotation on user interaction
         this.targetIndex = (this.currentIndex - 1 + this.models.length) % this.models.length;
         this.updateCarousel();
     }
     
+    startAutoRotate() {
+        if (!this.autoRotateEnabled || this.userHasInteracted) return;
+        
+        // Auto-rotate every 3 seconds
+        this.autoRotateInterval = setInterval(() => {
+            if (!this.isAnimating && this.autoRotateEnabled && !this.userHasInteracted) {
+                this.targetIndex = (this.currentIndex + 1) % this.models.length;
+                this.updateCarousel();
+            }
+        }, 3000);
+    }
+    
+    stopAutoRotate() {
+        if (this.autoRotateInterval) {
+            clearInterval(this.autoRotateInterval);
+            this.autoRotateInterval = null;
+        }
+        this.autoRotateEnabled = false;
+        this.userHasInteracted = true;
+    }
+    
     goToIndex(index) {
         if (this.isAnimating || index === this.currentIndex) return;
+        this.stopAutoRotate(); // Stop auto-rotation on indicator click
         this.targetIndex = index;
         this.updateCarousel();
     }
@@ -501,9 +595,10 @@ class Carousel3D {
             return; // Same index, no animation needed
         }
         
-        // Update indicators
+        // Update indicators (based on original model index)
+        const targetOriginalIndex = this.targetIndex % this.originalModelFiles.length;
         document.querySelectorAll('.carousel-indicator').forEach((indicator, index) => {
-            indicator.classList.toggle('active', index === this.targetIndex);
+            indicator.classList.toggle('active', index === targetOriginalIndex);
         });
         
         const sideOffset = 5;
@@ -755,10 +850,39 @@ class Carousel3D {
         const indicatorsContainer = document.getElementById('carouselIndicators');
         indicatorsContainer.innerHTML = '';
         
-        this.modelFiles.forEach((_, index) => {
+        // Only show indicators for original models, not duplicates
+        this.originalModelFiles.forEach((_, index) => {
             const indicator = document.createElement('div');
-            indicator.className = `carousel-indicator ${index === 0 ? 'active' : ''}`;
-            indicator.addEventListener('click', () => this.goToIndex(index));
+            // Calculate which original model we're currently viewing
+            const currentOriginalIndex = this.currentIndex % this.originalModelFiles.length;
+            indicator.className = `carousel-indicator ${index === currentOriginalIndex ? 'active' : ''}`;
+            // Calculate the target index in the duplicated array (go to first occurrence of this original model)
+            indicator.addEventListener('click', () => {
+                // Find the closest occurrence of this original model to current position
+                const targetOriginalIndex = index;
+                let targetIndex = this.currentIndex;
+                
+                // Find the nearest occurrence of this model
+                const currentOriginal = this.currentIndex % this.originalModelFiles.length;
+                let minDistance = Infinity;
+                let bestIndex = this.currentIndex;
+                
+                for (let i = 0; i < this.modelFiles.length; i++) {
+                    if (i % this.originalModelFiles.length === targetOriginalIndex) {
+                        const distance = Math.min(
+                            Math.abs(i - this.currentIndex),
+                            Math.abs(i - this.currentIndex + this.modelFiles.length),
+                            Math.abs(i - this.currentIndex - this.modelFiles.length)
+                        );
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            bestIndex = i;
+                        }
+                    }
+                }
+                
+                this.goToIndex(bestIndex);
+            });
             indicatorsContainer.appendChild(indicator);
         });
     }
