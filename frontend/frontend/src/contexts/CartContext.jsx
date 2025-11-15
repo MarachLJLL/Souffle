@@ -19,7 +19,17 @@ export const CartProvider = ({ children }) => {
     const savedCart = localStorage.getItem('souffle_cart');
     if (savedCart) {
       try {
-        setCart(JSON.parse(savedCart));
+        const parsedCart = JSON.parse(savedCart);
+        // Ensure all items have unique cartIds
+        const cartWithIds = parsedCart.map((item, index) => {
+          if (!item.cartId || item.cartId === null || item.cartId === undefined) {
+            // Generate a unique ID for items missing cartId
+            const uniqueId = `${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`;
+            return { ...item, cartId: uniqueId };
+          }
+          return item;
+        });
+        setCart(cartWithIds);
       } catch (error) {
         console.error('Error loading cart:', error);
       }
@@ -32,7 +42,9 @@ export const CartProvider = ({ children }) => {
   }, [cart]);
 
   const addToCart = (product) => {
-    setCart((prevCart) => [...prevCart, { ...product, cartId: Date.now() }]);
+    // Generate a unique cartId using timestamp + random number + index
+    const uniqueId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${Math.random().toString(36).substr(2, 9)}`;
+    setCart((prevCart) => [...prevCart, { ...product, cartId: uniqueId }]);
     // Brief visual feedback
     const cartBtn = document.getElementById('cartBtn');
     if (cartBtn) {
@@ -44,7 +56,16 @@ export const CartProvider = ({ children }) => {
   };
 
   const removeFromCart = (cartId) => {
-    setCart((prevCart) => prevCart.filter((item) => item.cartId !== cartId));
+    setCart((prevCart) => {
+      const filtered = prevCart.filter((item) => {
+        // Handle both string and number comparisons, ensure strict equality
+        if (item.cartId === undefined || item.cartId === null) {
+          return false; // Remove items without cartId
+        }
+        return String(item.cartId) !== String(cartId);
+      });
+      return filtered;
+    });
   };
 
   const updateQuantity = (cartId, quantity) => {
