@@ -1,9 +1,14 @@
-"use client";
+ "use client";
 
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { ARButton } from "three/examples/jsm/webxr/ARButton.js";
+
+// Global scale fudge factor for real-world AR sizing.
+// WebXR units are meters, but models and device perception can differ slightly.
+// Increase this (>1) if objects appear too small in AR; decrease if too large.
+const REAL_WORLD_SCALE_FACTOR = 1.5;
 
 export default function MultiModelAR({ modelUrls, modelRealSizes }) {
   const containerRef = useRef(null);
@@ -271,7 +276,8 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
                 const dims = modelRealSizes && modelRealSizes[idx];
 
                 if (dims && (dims.length || dims.width || dims.height)) {
-                  // Compute uniform scale so the bounding box roughly matches catalog dimensions
+                  // Compute uniform scale so the bounding box roughly matches catalog dimensions,
+                  // then apply a small global fudge factor so 1m feels closer to 1m in AR.
                   const box = new THREE.Box3().setFromObject(model);
                   const size = new THREE.Vector3();
                   box.getSize(size);
@@ -284,10 +290,13 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
                   if (size.y > 0 && dims.height) factors.push(dims.height / size.y);
                   if (size.z > 0 && dims.width) factors.push(dims.width / size.z);
 
-                  const uniformScale =
+                  let uniformScale =
                     factors.length > 0
                       ? factors.reduce((a, b) => a + b, 0) / factors.length
                       : 1;
+
+                  // Apply global AR scaling fudge factor
+                  uniformScale *= REAL_WORLD_SCALE_FACTOR;
 
                   model.scale.setScalar(uniformScale);
 
