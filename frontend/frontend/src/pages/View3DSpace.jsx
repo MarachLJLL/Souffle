@@ -7,12 +7,21 @@ import qrCode from '../assets/qr_code.png';
 const View3DSpace = () => {
   const { products } = useProducts();
   const [selectedProducts, setSelectedProducts] = useState([]);
+  const [initializedSelection, setInitializedSelection] = useState(false);
   const [showQR, setShowQR] = useState(false);
 
   // Filter to only show products with GLB files (limit to 4)
   const productsWith3D = products
     .filter((p) => p.glb)
     .slice(0, 4);
+
+  // On first load, start with all available 3D products selected
+  useEffect(() => {
+    if (!initializedSelection && productsWith3D.length > 0) {
+      setSelectedProducts(productsWith3D.map((p) => p.id));
+      setInitializedSelection(true);
+    }
+  }, [initializedSelection, productsWith3D]);
 
   const toggleProduct = (productId) => {
     setSelectedProducts((prev) =>
@@ -202,9 +211,33 @@ const Product3DCard = ({ product, isSelected, onToggle }) => {
   return (
     <div
       className={`product-selection-item ${isSelected ? 'selected' : ''}`}
+      style={{ position: 'relative' }}
       onClick={onToggle}
     >
       <div className="product-3d-viewer" ref={containerRef} />
+      {/* Deselect indicator overlay for clearer feedback */}
+      {!isSelected && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            backgroundColor: 'rgba(0,0,0,0.75)',
+            borderRadius: '999px',
+            padding: '4px 8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            color: '#fff',
+            fontSize: '10px',
+            fontWeight: 500,
+          }}
+        >
+          {/* You can replace this ✕ with a custom PNG icon if desired */}
+          <span style={{ fontSize: '11px' }}>✕</span>
+          <span>Excluded</span>
+        </div>
+      )}
       <div className="checkbox-container-bottom">
         <input
           type="checkbox"
