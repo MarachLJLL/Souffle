@@ -293,6 +293,13 @@ const Product3DCard = ({ product, isSelected, onToggle, onRemove }) => {
             });
           }
         });
+        
+        // Recenter the model after all transformations
+        const recenteredBox = new THREE.Box3().setFromObject(model);
+        const recenteredCenter = recenteredBox.getCenter(new THREE.Vector3());
+        model.position.x -= recenteredCenter.x;
+        model.position.y -= recenteredCenter.y;
+        model.position.z -= recenteredCenter.z;
 
         scene.add(model);
 

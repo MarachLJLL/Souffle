@@ -155,13 +155,24 @@ const Product = () => {
             }
           }
         });
+        
+        // Recenter the model after all transformations (scaling and material changes)
+        const recenteredBox = new THREE.Box3().setFromObject(model);
+        const recenteredCenter = recenteredBox.getCenter(new THREE.Vector3());
+        model.position.x -= recenteredCenter.x;
+        model.position.y -= recenteredCenter.y;
+        model.position.z -= recenteredCenter.z;
+        
+        // Recalculate size after recentering
+        const finalBox = new THREE.Box3().setFromObject(model);
+        const finalSize = finalBox.getSize(new THREE.Vector3());
 
         scene.add(model);
 
-        const distance = Math.max(size.x, size.y, size.z) * 2;
+        const distance = Math.max(finalSize.x, finalSize.y, finalSize.z) * 2;
         // Higher camera position looking down
-        camera.position.set(0, size.y * 0.8, distance);
-        controls.target.set(0, -size.y * 0.2, 0);
+        camera.position.set(0, finalSize.y * 0.8, distance);
+        controls.target.set(0, 0, 0); // Look at origin where model is centered
         controls.update();
       },
       undefined,
@@ -291,13 +302,24 @@ const Product = () => {
             });
           }
         });
+        
+        // Recenter the model after all transformations
+        const recenteredBox = new THREE.Box3().setFromObject(model);
+        const recenteredCenter = recenteredBox.getCenter(new THREE.Vector3());
+        model.position.x -= recenteredCenter.x;
+        model.position.y -= recenteredCenter.y;
+        model.position.z -= recenteredCenter.z;
+        
+        // Recalculate size after recentering
+        const finalBox = new THREE.Box3().setFromObject(model);
+        const finalSize = finalBox.getSize(new THREE.Vector3());
 
         scene.add(model);
 
-        const distance = Math.max(size.x, size.y, size.z) * 2.5;
+        const distance = Math.max(finalSize.x, finalSize.y, finalSize.z) * 2.5;
         // Higher camera position looking down for thumbnail
-        camera.position.set(0, size.y * 0.7, distance);
-        camera.lookAt(0, -size.y * 0.2, 0);
+        camera.position.set(0, finalSize.y * 0.7, distance);
+        camera.lookAt(0, 0, 0); // Look at origin where model is centered
       },
       undefined,
       (error) => console.error('Error loading thumbnail model:', error)

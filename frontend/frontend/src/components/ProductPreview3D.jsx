@@ -183,8 +183,14 @@ const ProductPreview3D = ({ productId, glbPath, measurements, imageFallback }) =
         
         // Recalculate bounding box after scaling to get accurate dimensions
         const scaledBox = new THREE.Box3().setFromObject(model);
+        const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
         const scaledSize = scaledBox.getSize(new THREE.Vector3());
         const scaledMaxDim = Math.max(scaledSize.x, scaledSize.y, scaledSize.z);
+        
+        // Recenter the model after scaling to ensure it's perfectly centered at origin
+        model.position.x -= scaledCenter.x;
+        model.position.y -= scaledCenter.y;
+        model.position.z -= scaledCenter.z;
         
         // Calculate item's aspect ratio (width/height from top view)
         // Use X (width) and Y (height) for aspect ratio calculation
@@ -231,14 +237,22 @@ const ProductPreview3D = ({ productId, glbPath, measurements, imageFallback }) =
         // Clamp distance to reasonable bounds
         const cameraDistance = Math.max(3, Math.min(requiredDistance, 15));
         
+        // Recenter one more time after all changes to ensure perfect centering
+        const finalBox = new THREE.Box3().setFromObject(model);
+        const finalCenter = finalBox.getCenter(new THREE.Vector3());
+        model.position.x -= finalCenter.x;
+        model.position.y -= finalCenter.y;
+        model.position.z -= finalCenter.z;
+        
+        // Get final size after recentering
+        const finalSizeBox = new THREE.Box3().setFromObject(model);
+        const finalSize = finalSizeBox.getSize(new THREE.Vector3());
+        
         // Set camera position: higher up looking down at the model
         // Increase Y position significantly for a top-down angle view
-        const cameraHeight = scaledSize.y * 0.8; // 80% of item height for a higher downward angle
+        const cameraHeight = finalSize.y * 0.8; // 80% of item height for a higher downward angle
         camera.position.set(0, cameraHeight, cameraDistance);
-        camera.lookAt(0, -scaledSize.y * 0.2, 0); // Look slightly below center for better downward view
-        
-        // Ensure the model is perfectly centered
-        // (Already done above with model.position.set(-center.x, -center.y, -center.z))
+        camera.lookAt(0, 0, 0); // Look at origin where model is perfectly centered
 
         scene.add(model);
 
