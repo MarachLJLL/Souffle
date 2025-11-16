@@ -238,15 +238,21 @@ const Product3DCard = ({ product, isSelected, onToggle, onRemove }) => {
 
     camera.position.set(0, 0.3, 5);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // Maximum brightness for very bright models
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.8);
     directionalLight.position.set(5, 5, 5);
     directionalLight.castShadow = true;
     scene.add(directionalLight);
+    
+    // Strong fill light to reduce harsh shadows
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.9);
+    fillLight.position.set(-5, 3, -5);
+    scene.add(fillLight);
 
-    const pointLight = new THREE.PointLight(0xffffff, 0.5);
+    const pointLight = new THREE.PointLight(0xffffff, 1.0);
     pointLight.position.set(0, 0, -5);
     scene.add(pointLight);
 

@@ -58,11 +58,24 @@ const ProductPreview3D = ({ productId, glbPath, measurements, imageFallback }) =
     renderer.domElement.style.height = '100%';
     renderer.domElement.style.display = 'block';
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // Maximum brightness - very high ambient light for overall illumination
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
     scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    
+    // Main directional light - very high intensity
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.8);
     directionalLight.position.set(5, 5, 5);
     scene.add(directionalLight);
+    
+    // Strong fill light from opposite side to reduce shadows
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.9);
+    fillLight.position.set(-5, 3, -5);
+    scene.add(fillLight);
+    
+    // Bright rim light for edge definition
+    const rimLight = new THREE.PointLight(0xffffff, 1.0);
+    rimLight.position.set(0, 0, -5);
+    scene.add(rimLight);
 
     camera.aspect = aspectRatio;
     camera.updateProjectionMatrix();

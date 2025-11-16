@@ -87,19 +87,20 @@ const Product = () => {
 
     camera.position.set(0, 0.3, 5);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // Maximum brightness - very high lighting for brightest models
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.8);
     directionalLight.position.set(5, 5, 5);
     directionalLight.castShadow = true;
     scene.add(directionalLight);
 
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.9);
     fillLight.position.set(-5, 3, -5);
     scene.add(fillLight);
 
-    const rimLight = new THREE.PointLight(0xffffff, 0.5);
+    const rimLight = new THREE.PointLight(0xffffff, 1.0);
     rimLight.position.set(0, 0, -5);
     scene.add(rimLight);
 
@@ -222,15 +223,15 @@ const Product = () => {
 
     camera.position.set(0, 0.3, 3);
 
-    // Simple lighting for thumbnail
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    // Maximum brightness for thumbnail
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.6);
     directionalLight.position.set(5, 5, 5);
     scene.add(directionalLight);
 
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.8);
     fillLight.position.set(-5, 3, -5);
     scene.add(fillLight);
 

@@ -49,21 +49,20 @@
     },
     {
         "id": 4,
-        "name": "Structube Sofa",
+        "name": "Silver Pose Portable Table Lamp",
         "image_paths": [
-            "images/4_display_1.webp",
-            "images/4_display_2.webp",
-            "images/4_display_3.webp"
+            "images/4_display_1.png",
+            "images/4_display_2.png"
         ],
         "glb": "glbs/4.glb",
         "measurements": {
-            "length": 118.0,
-            "width": 53.0,
-            "height": 75.0
+            "length": 17.5,
+            "width": 17.5,
+            "height": 25.0
         },
-        "price": 139.0,
-        "description": "White Structure sofa",
-        "listing_image": "images/4_listing.webp"
+        "price": 350.0,
+        "description": "Wireless glossy polymer table lamp in silver tone.",
+        "listing_image": "images/4_display.png"
     },
     {
         "id": 6,
