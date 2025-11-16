@@ -64,11 +64,9 @@ def create_3d_model_from_images(image_files, prompt: str):
         api_url = MESHY_IMAGE_API_URL
         payload = {
             "image_url": image_data_uris[0],
-            "ai_model": "latest",  # Use Meshy 6 Preview for both model and texture
-            "should_texture": True,  # Explicitly enable texture generation with latest model
-            "enable_pbr": True,  # Generate PBR maps (metallic, roughness, normal)
-            # Add texture_prompt only if the user provided one
-            **({"texture_prompt": prompt} if prompt else {})
+            "enable_pbr": True,
+            # --- FIX: Explicitly tell the API to generate textures ---
+            "should_texture": True, 
         }
         print("Using Single Image to 3D endpoint.")
     else:
@@ -76,10 +74,9 @@ def create_3d_model_from_images(image_files, prompt: str):
         api_url = MESHY_MULTI_IMAGE_API_URL
         payload = {
             "image_urls": image_data_uris,
-            "ai_model": "latest",  # Use Meshy 6 Preview for texture (mesh uses Meshy-5)
-            "should_texture": True,  # Explicitly enable texture generation with latest model
-            "enable_pbr": True,  # Generate PBR maps (metallic, roughness, normal)
-            **({"texture_prompt": prompt} if prompt else {})
+            "enable_pbr": True,
+            # --- FIX: Explicitly tell the API to generate textures ---
+            "should_texture": True,
         }
         print("Using Multi-Image to 3D endpoint.")
 
