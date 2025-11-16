@@ -19,7 +19,7 @@ const ProductPreview3D = ({ productId, glbPath, measurements }) => {
     container.style.width = '100%';
     container.style.minHeight = '380px';
     container.style.position = 'relative';
-    container.style.background = '#f5f5f5';
+    container.style.background = '#E4E2E2';
 
     const getDimensions = () => {
       const parentWidth =
@@ -35,7 +35,7 @@ const ProductPreview3D = ({ productId, glbPath, measurements }) => {
 
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setClearColor(0xf5f5f5, 1);
+    renderer.setClearColor(0xE4E2E2, 1);
     container.appendChild(renderer.domElement);
 
     renderer.domElement.style.width = '100%';

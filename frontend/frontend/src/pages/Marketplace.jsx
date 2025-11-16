@@ -10,6 +10,14 @@ const Marketplace = () => {
   const { addToCart } = useCart();
   const initializedRefs = useRef(new Set());
 
+  // Add class to body when on marketplace page
+  useEffect(() => {
+    document.body.classList.add('marketplace-page-active');
+    return () => {
+      document.body.classList.remove('marketplace-page-active');
+    };
+  }, []);
+
   // Debug: Log products when they load
   useEffect(() => {
     if (!loading && products.length > 0) {
@@ -36,9 +44,11 @@ const Marketplace = () => {
 
   if (loading) {
     return (
-      <div className="main">
-        <div className="container">
-          <p>Loading products...</p>
+      <div className="marketplace-page" style={{ backgroundColor: '#E4E2E2', minHeight: '100vh' }}>
+        <div className="main">
+          <div className="container">
+            <p>Loading products...</p>
+          </div>
         </div>
       </div>
     );
@@ -46,16 +56,18 @@ const Marketplace = () => {
 
   if (products.length === 0) {
     return (
-      <div className="main">
-        <div className="container">
-          <p>No products found.</p>
+      <div className="marketplace-page" style={{ backgroundColor: '#E4E2E2', minHeight: '100vh' }}>
+        <div className="main">
+          <div className="container">
+            <p>No products found.</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <>
+    <div className="marketplace-page" style={{ backgroundColor: '#E4E2E2', minHeight: '100vh' }}>
       <Carousel3D />
       <main className="main">
         <div className="container">
@@ -84,7 +96,7 @@ const Marketplace = () => {
                   ) : (
                     <div
                       style={{
-                        background: '#f5f5f5',
+                        background: '#E4E2E2',
                         width: '100%',
                         aspectRatio: 1,
                       }}
@@ -100,7 +112,7 @@ const Marketplace = () => {
           </div>
         </div>
       </main>
-    </>
+    </div>
   );
 };
 
