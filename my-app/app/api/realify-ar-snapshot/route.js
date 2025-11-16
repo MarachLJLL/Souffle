@@ -51,7 +51,7 @@ export async function POST(req) {
 
     const prompt =
       "Take this AR-style product render and generate a photorealistic image " +
-      "of the same product in a realistic environment that matches the perspective and lighting.";
+      "of the same product but ultrarealistic in a realistic environment that matches the perspective and lighting and orientation. Orientation must stay constant. Get rid of white reticle if present and ensure all parts of objects are present and follow physics.";
 
     // === Images Edit call as per the docs you pasted ===
     const rsp = await client.images.edit({
