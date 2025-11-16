@@ -1,0 +1,30 @@
+{
+    "local_id": 5,
+    "meshy_task_id": "019a8b35-5be9-7fee-b157-acd1003d7643",
+    "prompt": "kidney table",
+    "status": "READY",
+    "status_meshy": "SUCCEEDED",
+    "progress": 100,
+    "created_at": 1763272222,
+    "error_message": null,
+    "is_product": true,
+    "product_id": 10,
+    "product_data": {
+        "id": 10,
+        "name": "kidney table",
+        "image_paths": [
+            "images/10_display_1.jpg",
+            "images/10_display_2.jpg",
+            "images/10_display_3.jpg"
+        ],
+        "glb": "glbs/10.glb",
+        "measurements": {
+            "length": 47.0,
+            "width": 79.0,
+            "height": 35.0
+        },
+        "price": 20.0,
+        "description": "please",
+        "listing_image": "images/10_listing.jpg"
+    }
+}

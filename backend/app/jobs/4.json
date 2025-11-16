@@ -1,0 +1,30 @@
+{
+    "local_id": 4,
+    "meshy_task_id": "019a8b30-1c0e-72c0-9609-230291ee89d1",
+    "prompt": "good colour i beg",
+    "status": "READY",
+    "status_meshy": "SUCCEEDED",
+    "progress": 100,
+    "created_at": 1763271877,
+    "error_message": null,
+    "is_product": true,
+    "product_id": 9,
+    "product_data": {
+        "id": 9,
+        "name": "good colour i beg",
+        "image_paths": [
+            "images/9_display_1.jpg",
+            "images/9_display_2.jpg",
+            "images/9_display_3.jpg"
+        ],
+        "glb": "glbs/9.glb",
+        "measurements": {
+            "length": 50.0,
+            "width": 50.0,
+            "height": 80.0
+        },
+        "price": 20.0,
+        "description": "good colour i beg",
+        "listing_image": "images/9_listing.jpg"
+    }
+}
