@@ -81,12 +81,24 @@
         "listing_image": "images/6_listing.png"
     },
     {
+        "id": 7,
+        "name": "Blue Zayl 22 Glow Vase",
+        "price": 70.0,
+        "description": "Sculptural 3D-printed transparent PLA vase.",
+        "image_paths": [],
+        "glb": "glbs/7.glb",
+        "measurements": {
+            "length": 20.0,
+            "width": 20.0,
+            "height": 22.0
+        },
+        "listing_image": "images/7_display.png"
+    },
+    {
         "id": 8,
-        "name": "colour pls",
+        "name": "Replica Candle",
         "image_paths": [
-            "images/8_display_1.jpg",
-            "images/8_display_2.jpg",
-            "images/8_display_3.jpg"
+            "images/8_display.png"
         ],
         "glb": "glbs/8.glb",
         "measurements": {
@@ -96,11 +108,11 @@
         },
         "price": 29.0,
         "description": "pls",
-        "listing_image": "images/8_listing.jpg"
+        "listing_image": "images/8_display.jpg"
     },
     {
         "id": 9,
-        "name": "good colour i beg",
+        "name": "Gray Hai Lounge Chair",
         "image_paths": [
             "images/9_display_1.jpg",
             "images/9_display_2.jpg",
@@ -118,7 +130,7 @@
     },
     {
         "id": 10,
-        "name": "kidney table",
+        "name": "Brown Coffee Table",
         "image_paths": [
             "images/10_display_1.jpg",
             "images/10_display_2.jpg",

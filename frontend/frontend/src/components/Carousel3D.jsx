@@ -59,6 +59,8 @@ const Carousel3D = () => {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Increase color saturation in output
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(renderer.domElement);
     carousel.renderer = renderer;
 
@@ -69,7 +71,9 @@ const Carousel3D = () => {
       0.1,
       1000
     );
-    camera.position.set(0, 0, 15);
+    // Higher camera position looking down at carousel items
+    camera.position.set(0, 3, 15);
+    camera.lookAt(0, -1, 0); // Look slightly down
     carousel.camera = camera;
 
     // Setup lights - maximum brightness for very bright models
@@ -128,6 +132,23 @@ const Carousel3D = () => {
           originalModel.scale.setScalar(baseScale);
           originalModel.userData.baseScale = baseScale;
           originalModel.userData.yOffset = -center.y * baseScale;
+          
+          // Increase saturation of all materials for more vibrant colors
+          originalModel.traverse((child) => {
+            if (child.isMesh && child.material) {
+              const materials = Array.isArray(child.material) ? child.material : [child.material];
+              materials.forEach((material) => {
+                if (material.color) {
+                  const color = material.color;
+                  const hsl = { h: 0, s: 0, l: 0 };
+                  color.getHSL(hsl);
+                  // Increase saturation by 40% (clamp to max 1.0)
+                  hsl.s = Math.min(1.0, hsl.s * 1.4);
+                  color.setHSL(hsl.h, hsl.s, hsl.l);
+                }
+              });
+            }
+          });
 
           loadedModels[file] = originalModel;
           uniqueLoadedCount++;
