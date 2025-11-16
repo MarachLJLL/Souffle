@@ -74,6 +74,7 @@ const Product = () => {
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     const width = container.clientWidth;
     const height = container.clientHeight;
@@ -85,7 +86,8 @@ const Product = () => {
     renderer.setClearColor(0xE4E2E2, 1);
     container.appendChild(renderer.domElement);
 
-    camera.position.set(0, 0.3, 5);
+    // Higher initial camera position looking down
+    camera.position.set(0, 1.5, 5);
 
     // Maximum brightness - very high lighting for brightest models
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
@@ -133,18 +135,35 @@ const Product = () => {
         const scale = maxDim > 2 ? 2.4 / maxDim : 1.2;
         model.scale.multiplyScalar(scale);
 
+        // Increase saturation of all materials for more vibrant colors
         model.traverse((child) => {
           if (child.isMesh) {
             child.castShadow = true;
             child.receiveShadow = true;
+            
+            // Increase material saturation
+            if (child.material) {
+              const materials = Array.isArray(child.material) ? child.material : [child.material];
+              materials.forEach((material) => {
+                if (material.color) {
+                  const color = material.color;
+                  const hsl = { h: 0, s: 0, l: 0 };
+                  color.getHSL(hsl);
+                  // Increase saturation by 40% (clamp to max 1.0)
+                  hsl.s = Math.min(1.0, hsl.s * 1.4);
+                  color.setHSL(hsl.h, hsl.s, hsl.l);
+                }
+              });
+            }
           }
         });
 
         scene.add(model);
 
         const distance = Math.max(size.x, size.y, size.z) * 2;
-        camera.position.set(0, 0.3, distance);
-        controls.target.set(0, 0.2, 0);
+        // Higher camera position looking down
+        camera.position.set(0, size.y * 0.8, distance);
+        controls.target.set(0, -size.y * 0.2, 0);
         controls.update();
       },
       undefined,
@@ -214,6 +233,7 @@ const Product = () => {
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     const width = 80;
     const height = 80;
@@ -223,7 +243,8 @@ const Product = () => {
     renderer.setClearColor(0x000000, 0); // Transparent background
     container.appendChild(renderer.domElement);
 
-    camera.position.set(0, 0.3, 3);
+    // Higher initial camera position looking down
+    camera.position.set(0, 1.0, 3);
 
     // Maximum brightness for thumbnail
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
@@ -257,12 +278,30 @@ const Product = () => {
         const maxDim = Math.max(size.x, size.y, size.z);
         const scale = maxDim > 2 ? 2.5 / maxDim : 1.5;
         model.scale.multiplyScalar(scale);
+        
+        // Increase saturation of all materials for more vibrant colors
+        model.traverse((child) => {
+          if (child.isMesh && child.material) {
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+            materials.forEach((material) => {
+              if (material.color) {
+                const color = material.color;
+                const hsl = { h: 0, s: 0, l: 0 };
+                color.getHSL(hsl);
+                // Increase saturation by 40% (clamp to max 1.0)
+                hsl.s = Math.min(1.0, hsl.s * 1.4);
+                color.setHSL(hsl.h, hsl.s, hsl.l);
+              }
+            });
+          }
+        });
 
         scene.add(model);
 
         const distance = Math.max(size.x, size.y, size.z) * 2.5;
-        camera.position.set(0, 0.2, distance);
-        camera.lookAt(0, 0, 0);
+        // Higher camera position looking down for thumbnail
+        camera.position.set(0, size.y * 0.7, distance);
+        camera.lookAt(0, -size.y * 0.2, 0);
       },
       undefined,
       (error) => console.error('Error loading thumbnail model:', error)

@@ -227,6 +227,8 @@ const Product3DCard = ({ product, isSelected, onToggle, onRemove }) => {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    // Increase color saturation in output
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     const width = container.clientWidth || 200;
     const height = container.clientHeight || 200;
@@ -236,7 +238,9 @@ const Product3DCard = ({ product, isSelected, onToggle, onRemove }) => {
     scene.background = new THREE.Color(0xf5f5f5);
     container.appendChild(renderer.domElement);
 
-    camera.position.set(0, 0.3, 5);
+    // Higher camera position looking down at models
+    camera.position.set(0, 1.5, 5);
+    camera.lookAt(0, -0.5, 0); // Look slightly down
 
     // Maximum brightness for very bright models
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
@@ -272,6 +276,23 @@ const Product3DCard = ({ product, isSelected, onToggle, onRemove }) => {
         const maxDim = Math.max(size.x, size.y, size.z);
         const scale = 2 / maxDim;
         model.scale.multiplyScalar(scale);
+        
+        // Increase saturation of all materials for more vibrant colors
+        model.traverse((child) => {
+          if (child.isMesh && child.material) {
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+            materials.forEach((material) => {
+              if (material.color) {
+                const color = material.color;
+                const hsl = { h: 0, s: 0, l: 0 };
+                color.getHSL(hsl);
+                // Increase saturation by 40% (clamp to max 1.0)
+                hsl.s = Math.min(1.0, hsl.s * 1.4);
+                color.setHSL(hsl.h, hsl.s, hsl.l);
+              }
+            });
+          }
+        });
 
         scene.add(model);
 

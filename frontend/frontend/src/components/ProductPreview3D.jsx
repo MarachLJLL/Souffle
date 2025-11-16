@@ -51,6 +51,8 @@ const ProductPreview3D = ({ productId, glbPath, measurements, imageFallback }) =
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0xE4E2E2, 1);
+    // Increase color saturation in output
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(renderer.domElement);
 
     renderer.domElement.style.width = '100%';
@@ -108,6 +110,24 @@ const ProductPreview3D = ({ productId, glbPath, measurements, imageFallback }) =
         model.position.x = -center.x;
         model.position.y = -center.y;
         model.position.z = -center.z;
+        
+        // Increase saturation of all materials for more vibrant colors
+        model.traverse((child) => {
+          if (child.isMesh && child.material) {
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+            materials.forEach((material) => {
+              if (material.color) {
+                // Convert RGB to HSL, increase saturation, convert back
+                const color = material.color;
+                const hsl = { h: 0, s: 0, l: 0 };
+                color.getHSL(hsl);
+                // Increase saturation by 40% (clamp to max 1.0)
+                hsl.s = Math.min(1.0, hsl.s * 1.4);
+                color.setHSL(hsl.h, hsl.s, hsl.l);
+              }
+            });
+          }
+        });
 
         // Normalize all models to the same vertical height for consistent sizing
         // This ensures all products appear the same size and align at top and bottom
@@ -229,13 +249,11 @@ const ProductPreview3D = ({ productId, glbPath, measurements, imageFallback }) =
         // Clamp distance to reasonable bounds
         const cameraDistance = Math.max(3, Math.min(requiredDistance, 15));
         
-        // Set camera position: fixed height and angle for consistent view across all products
-        // This ensures all products appear aligned on the same baseline in the viewport
-        // Use a consistent look-at point that's the same for all models to ensure uniform alignment
-        const cameraHeight = 0.3; // Slight elevation for better view angle
-        const lookAtY = baselineY + 1.0; // Fixed look-at point above baseline (same for all models)
+        // Set camera position: higher up looking down at the model
+        // Increase Y position significantly for a top-down angle view
+        const cameraHeight = scaledSize.y * 0.8; // 80% of item height for a higher downward angle
         camera.position.set(0, cameraHeight, cameraDistance);
-        camera.lookAt(0, lookAtY, 0); // Look at fixed point to ensure all models align uniformly
+        camera.lookAt(0, -scaledSize.y * 0.2, 0); // Look slightly below center for better downward view
         
         // Ensure the model is perfectly centered
         // (Already done above with model.position.set(-center.x, -center.y, -center.z))
