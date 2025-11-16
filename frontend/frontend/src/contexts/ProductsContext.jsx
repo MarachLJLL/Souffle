@@ -65,36 +65,12 @@ export const ProductsProvider = ({ children }) => {
     }
   };
 
-  // Load products (from database + localStorage listings)
+  // Load products from database only
   const loadProducts = async () => {
     setLoading(true);
     try {
       const dbProducts = await loadProductsFromDatabase();
-      const savedListings =
-        JSON.parse(localStorage.getItem('souffle_listings') || '[]') || [];
-
-      // Convert listings to product format (with base64 images)
-      const listingProducts = savedListings.map((listing) => ({
-        id: listing.id,
-        name: listing.name,
-        price: listing.price,
-        glb: listing.glb || null, // GLB path if available
-        image: listing.image, // base64 image for fallback
-        size: 'normal',
-        isListing: true,
-        description: listing.description,
-        dimensions: listing.dimensions,
-        specs: listing.dimensions
-          ? [
-              `LENGTH: ${listing.dimensions.length} CM`,
-              `WIDTH: ${listing.dimensions.width} CM`,
-              `HEIGHT: ${listing.dimensions.height} CM`,
-            ]
-          : [],
-      }));
-
-      // Combine database products with listings
-      setProducts([...dbProducts, ...listingProducts]);
+      setProducts(dbProducts);
     } catch (error) {
       console.error('Error loading products:', error);
     } finally {
@@ -107,7 +83,7 @@ export const ProductsProvider = ({ children }) => {
     loadProducts();
   }, []);
 
-  // Refresh products (useful after adding a listing)
+  // Refresh products
   const refreshProducts = () => {
     loadProducts();
   };

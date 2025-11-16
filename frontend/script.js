@@ -31,31 +31,10 @@ async function loadProductsFromDatabase() {
     }
 }
 
-// Load listings from localStorage and merge with database products
+// Load products from database only
 async function loadProducts() {
     const dbProducts = await loadProductsFromDatabase();
-    const savedListings = JSON.parse(localStorage.getItem('souffle_listings') || '[]');
-    
-    // Convert listings to product format (with base64 images)
-    const listingProducts = savedListings.map(listing => ({
-        id: listing.id,
-        name: listing.name,
-        price: listing.price,
-        glb: listing.glb || null, // GLB path if available
-        image: listing.image, // base64 image for fallback
-        size: "normal",
-        isListing: true,
-        description: listing.description,
-        dimensions: listing.dimensions,
-        specs: listing.dimensions ? [
-            `LENGTH: ${listing.dimensions.length} CM`,
-            `WIDTH: ${listing.dimensions.width} CM`,
-            `HEIGHT: ${listing.dimensions.height} CM`
-        ] : []
-    }));
-    
-    // Combine database products with listings
-    return [...dbProducts, ...listingProducts];
+    return dbProducts;
 }
 
 // Initialize products array (will be populated asynchronously)

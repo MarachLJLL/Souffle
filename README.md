@@ -1,8 +1,32 @@
-Souffle is your one-stop-shop for all your furniture needs! 
+# 🛋️ Soufflé  
+Your one-stop platform for browsing, visualizing, and selling furniture — all powered by instant 3D.
 
-Features:
-*explore the extensive furniture listings, all with 3D models included
-*add products to your 3D space and view it in AR using your phone camera
-*list your own pieces to sell! Create a listing that will automatically create a 3D Model of your product!
-*upload photos of products you are interested in purchasing from other websites, and use our 3D space to view it in your home!
-*view multiple products in 3D in your home at once! For the first time ever.
+Soufflé makes furniture shopping actually intuitive. Every product can be viewed as a 3D model, placed in your home through AR, and combined with other items so you can design your space in real time.
+
+---
+
+## 🚀 Features
+
+### 🔍 Explore Furniture Listings  
+Browse an extensive catalog of furniture, each with its own auto-generated **3D model**.
+
+### 🏡 View Items in AR  
+Add products to your personal **3D Space** and view them at real scale using your phone camera.
+
+### 🛒 Create Listings  
+Selling something? Upload a few photos and Soufflé automatically generates a **3D model** of your product.
+
+### 🌐 Import from Any Website  
+Found something on Marketplace, IKEA, or anywhere else?  
+Upload the photos and preview the item in **your** home using Soufflé's AR tools.
+
+### 🧩 Multi-Item AR  
+For the **first time ever**, place **multiple** 3D products in your home at once to build full room layouts.
+
+---
+
+## 🧰 Tech Stack
+
+- **React** for the frontend  
+- **Three.js + WebXR** for 3D rendering and AR  
+- **Meshy API** for image-to-3D model generation  

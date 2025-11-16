@@ -369,4 +369,4 @@ def viewer_ids_route():
 # --- Main Execution ---
 if __name__ == "__main__":
     revive_pending_jobs() # Run this once on startup
-    app.run(debug=False, port=5000) # Use debug=False to avoid running revive_pending_jobs twice
+    app.run(debug=False, port=8080) # Use debug=False to avoid running revive_pending_jobs twice
