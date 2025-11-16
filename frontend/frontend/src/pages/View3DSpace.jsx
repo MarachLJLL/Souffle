@@ -2,10 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useProducts } from '../contexts/ProductsContext';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import qrCode from '../assets/qr_code.png';
 
 const View3DSpace = () => {
   const { products } = useProducts();
   const [selectedProducts, setSelectedProducts] = useState([]);
+  const [showQR, setShowQR] = useState(false);
 
   // Filter to only show products with GLB files (limit to 4)
   const productsWith3D = products
@@ -26,7 +28,7 @@ const View3DSpace = () => {
       'selected_3d_products',
       JSON.stringify(selectedProducts)
     );
-    alert('View 3D Space functionality coming soon!');
+    setShowQR(true);
   };
 
   return (
@@ -62,6 +64,65 @@ const View3DSpace = () => {
           </div>
         </div>
       </div>
+
+      {showQR && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: '12px',
+              padding: '20px',
+              maxWidth: '320px',
+              width: '90%',
+              textAlign: 'center',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
+            }}
+          >
+            <p
+              style={{
+                marginBottom: '12px',
+                fontSize: '14px',
+                color: '#333',
+                fontWeight: 500,
+              }}
+            >
+              Scan this QR code to view your 3D space on another device:
+            </p>
+            <img
+              src={qrCode}
+              alt="View 3D space QR code"
+              style={{ maxWidth: '220px', width: '100%', height: 'auto', marginBottom: '16px' }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowQR(false)}
+              style={{
+                marginTop: '4px',
+                padding: '8px 16px',
+                borderRadius: '999px',
+                border: 'none',
+                backgroundColor: '#000',
+                color: '#fff',
+                fontSize: '12px',
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 };

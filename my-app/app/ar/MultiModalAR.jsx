@@ -33,6 +33,7 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
   const [realImageUrl, setRealImageUrl] = useState(null);
   const [realifyError, setRealifyError] = useState(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [isARSessionActive, setIsARSessionActive] = useState(false);
 
   const rotateSelected = (deltaDegrees) => {
     const idx = selectedIndexRef.current;
@@ -102,6 +103,7 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
     const onSessionStart = () => {
       hitTestSourceRequested = false;
       renderer && renderer.setAnimationLoop(renderLoop);
+      setIsARSessionActive(true);
     };
 
     const onSessionEnd = () => {
@@ -111,6 +113,7 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
         renderer.setAnimationLoop(null);
       }
       if (reticle) reticle.visible = false;
+      setIsARSessionActive(false);
     };
 
     const onResize = () => {
@@ -378,12 +381,32 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
           helpers[index] = null;
         }
 
-        // Measure an oriented bounding box in the model's local space,
+        // Measure a tighter oriented bounding box in the model's local space,
         // then parent the helper to the instance so it follows rotation.
         instance.updateWorldMatrix(true, true);
-        const worldBox = new THREE.Box3().setFromObject(instance);
-        const invWorld = new THREE.Matrix4().copy(instance.matrixWorld).invert();
+
+        // Build a tight world-space box by unioning per-mesh geometry bounds
+        const worldBox = new THREE.Box3();
+        instance.traverse((obj) => {
+          if (obj.isMesh && obj.geometry) {
+            if (!obj.geometry.boundingBox) {
+              obj.geometry.computeBoundingBox();
+            }
+            if (obj.geometry.boundingBox) {
+              const geomBox = obj.geometry.boundingBox.clone();
+              geomBox.applyMatrix4(obj.matrixWorld);
+              worldBox.union(geomBox);
+            }
+          }
+        });
+
+        // Fallback: if traversal produced an empty box, use the classic setFromObject
+        if (worldBox.isEmpty()) {
+          worldBox.setFromObject(instance);
+        }
+
         // Transform world-aligned box into the instance's local space
+        const invWorld = new THREE.Matrix4().copy(instance.matrixWorld).invert();
         worldBox.applyMatrix4(invWorld);
 
         const size = new THREE.Vector3();
@@ -594,114 +617,116 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
         id="xr-overlay"
         className="pointer-events-none fixed inset-0"
       >
-        <div className="pointer-events-auto absolute inset-x-0 bottom-0 flex justify-center p-2 md:p-4">
-          <div className="w-full max-w-md rounded-t-2xl bg-black/80 text-white shadow-xl">
-            {/* Drag / toggle handle */}
-            <div className="flex items-center justify-center py-1">
-              <button
-                type="button"
-                className="flex h-6 w-10 items-center justify-center rounded-full bg-white/15 text-xs"
-                onClick={() => {
-                  lastUiInteractionRef.current = performance.now();
-                  setIsPanelOpen((prev) => !prev);
-                }}
-              >
-                {isPanelOpen ? "▼" : "▲"}
-              </button>
-            </div>
+        {isARSessionActive && (
+          <div className="pointer-events-auto absolute inset-x-0 bottom-0 flex justify-center p-2 md:p-4">
+            <div className="w-full max-w-md rounded-t-2xl bg-black/80 text-white shadow-xl">
+              {/* Drag / toggle handle */}
+              <div className="flex items-center justify-center py-1">
+                <button
+                  type="button"
+                  className="flex h-6 w-10 items-center justify-center rounded-full bg-white/15 text-xs"
+                  onClick={() => {
+                    lastUiInteractionRef.current = performance.now();
+                    setIsPanelOpen((prev) => !prev);
+                  }}
+                >
+                  {isPanelOpen ? "▼" : "▲"}
+                </button>
+              </div>
 
-            {isPanelOpen && (
-              <div className="border-t border-white/10 px-3 pb-3 pt-2">
-                <div className="mb-2 flex items-center justify-between">
-                  <h2 className="text-[11px] font-semibold uppercase tracking-wide text-gray-200">
-                    Models & AR controls
-                  </h2>
-                </div>
+              {isPanelOpen && (
+                <div className="border-t border-white/10 px-3 pb-3 pt-2">
+                  <div className="mb-2 flex items-center justify-between">
+                    <h2 className="text-[11px] font-semibold uppercase tracking-wide text-gray-200">
+                      Models & AR controls
+                    </h2>
+                  </div>
 
-                {/* Models list with thumbnails */}
-                <div className="mb-3 flex max-h-20 gap-2 overflow-x-auto pr-1">
-                  {modelUrls.map((url, idx) => (
+                  {/* Models list with thumbnails */}
+                  <div className="mb-3 flex max-h-20 gap-2 overflow-x-auto pr-1">
+                    {modelUrls.map((url, idx) => (
+                      <button
+                        key={url}
+                        type="button"
+                        onClick={() => {
+                          lastUiInteractionRef.current = performance.now();
+                          setSelectedIndex(idx);
+                        }}
+                        className={`flex items-center justify-center rounded-lg border px-1 py-1 ${
+                          idx === selectedIndex
+                            ? "border-white bg-white/10"
+                            : "border-white/20 bg-white/5"
+                        }`}
+                      >
+                        <ModelThumbnail url={url} />
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="mb-2 grid grid-cols-2 gap-2 text-[10px]">
                     <button
-                      key={url}
                       type="button"
+                      className="rounded bg-white/10 px-2 py-1"
                       onClick={() => {
                         lastUiInteractionRef.current = performance.now();
-                        setSelectedIndex(idx);
+                        rotateSelected(15);
                       }}
-                      className={`flex items-center justify-center rounded-lg border px-1 py-1 ${
-                        idx === selectedIndex
-                          ? "border-white bg-white/10"
-                          : "border-white/20 bg-white/5"
-                      }`}
                     >
-                      <ModelThumbnail url={url} />
+                      Rotate ⟲
                     </button>
-                  ))}
-                </div>
+                    <button
+                      type="button"
+                      className="rounded bg-white/10 px-2 py-1"
+                      onClick={() => {
+                        lastUiInteractionRef.current = performance.now();
+                        rotateSelected(-15);
+                      }}
+                    >
+                      Rotate ⟳
+                    </button>
+                    <button
+                      type="button"
+                      className={`rounded px-2 py-1 ${
+                        showBounds ? "bg-white text-black" : "bg-white/10 text-white"
+                      }`}
+                      onClick={() => {
+                        lastUiInteractionRef.current = performance.now();
+                        setShowBounds((prev) => !prev);
+                      }}
+                    >
+                      {showBounds ? "Hide bounds" : "Show bounds"}
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded bg-white/10 px-2 py-1 disabled:opacity-50"
+                      onClick={handleRealifySnapshot}
+                      disabled={isRealifyLoading}
+                    >
+                      {isRealifyLoading ? "Generating…" : "Snapshot → Real photo"}
+                    </button>
+                  </div>
 
-                {/* Actions */}
-                <div className="mb-2 grid grid-cols-2 gap-2 text-[10px]">
-                  <button
-                    type="button"
-                    className="rounded bg-white/10 px-2 py-1"
-                    onClick={() => {
-                      lastUiInteractionRef.current = performance.now();
-                      rotateSelected(15);
-                    }}
-                  >
-                    Rotate ⟲
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded bg-white/10 px-2 py-1"
-                    onClick={() => {
-                      lastUiInteractionRef.current = performance.now();
-                      rotateSelected(-15);
-                    }}
-                  >
-                    Rotate ⟳
-                  </button>
-                  <button
-                    type="button"
-                    className={`rounded px-2 py-1 ${
-                      showBounds ? "bg-white text-black" : "bg-white/10 text-white"
-                    }`}
-                    onClick={() => {
-                      lastUiInteractionRef.current = performance.now();
-                      setShowBounds((prev) => !prev);
-                    }}
-                  >
-                    {showBounds ? "Hide bounds" : "Show bounds"}
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded bg-white/10 px-2 py-1 disabled:opacity-50"
-                    onClick={handleRealifySnapshot}
-                    disabled={isRealifyLoading}
-                  >
-                    {isRealifyLoading ? "Generating…" : "Snapshot → Real photo"}
-                  </button>
+                  {/* Info / dimensions / errors */}
+                  {modelRealSizes && modelRealSizes[selectedIndex] && (
+                    <p className="text-[10px] text-gray-300">
+                      {`Size: ${Number(modelRealSizes[selectedIndex].length).toFixed(
+                        2
+                      )}m × ${Number(modelRealSizes[selectedIndex].height).toFixed(
+                        2
+                      )}m × ${Number(modelRealSizes[selectedIndex].width).toFixed(2)}m (L×H×W)`}
+                    </p>
+                  )}
+                  {realifyError && (
+                    <p className="mt-1 text-[10px] text-red-400">
+                      {realifyError}
+                    </p>
+                  )}
                 </div>
-
-                {/* Info / dimensions / errors */}
-                {modelRealSizes && modelRealSizes[selectedIndex] && (
-                  <p className="text-[10px] text-gray-300">
-                    {`Size: ${Number(modelRealSizes[selectedIndex].length).toFixed(
-                      2
-                    )}m × ${Number(modelRealSizes[selectedIndex].height).toFixed(
-                      2
-                    )}m × ${Number(modelRealSizes[selectedIndex].width).toFixed(2)}m (L×H×W)`}
-                  </p>
-                )}
-                {realifyError && (
-                  <p className="mt-1 text-[10px] text-red-400">
-                    {realifyError}
-                  </p>
-                )}
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {supportStatus === "checking" && (
