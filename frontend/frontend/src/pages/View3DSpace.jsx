@@ -7,17 +7,33 @@ const View3DSpace = () => {
   const { products } = useProducts();
   const [selectedProducts, setSelectedProducts] = useState([]);
 
-  // Filter to only show products with GLB files (limit to 4)
-  const productsWith3D = products
-    .filter((p) => p.glb)
-    .slice(0, 4);
+  // Load products from localStorage on mount
+  useEffect(() => {
+    const savedProducts = localStorage.getItem('selected_3d_products');
+    if (savedProducts) {
+      try {
+        const productIds = JSON.parse(savedProducts);
+        setSelectedProducts(productIds);
+      } catch (error) {
+        console.error('Error loading 3D space products:', error);
+      }
+    }
+  }, []);
+
+  // Filter to only show products with GLB files that are in selectedProducts or all products
+  // Show products that are added to 3D space, or show all if none selected
+  const productsWith3D = selectedProducts.length > 0
+    ? products.filter((p) => p.glb && selectedProducts.includes(p.id))
+    : products.filter((p) => p.glb).slice(0, 4);
 
   const toggleProduct = (productId) => {
-    setSelectedProducts((prev) =>
-      prev.includes(productId)
-        ? prev.filter((id) => id !== productId)
-        : [...prev, productId]
-    );
+    const updated = selectedProducts.includes(productId)
+      ? selectedProducts.filter((id) => id !== productId)
+      : [...selectedProducts, productId];
+    
+    setSelectedProducts(updated);
+    // Save to localStorage
+    localStorage.setItem('selected_3d_products', JSON.stringify(updated));
   };
 
   const handleView3D = () => {
@@ -29,6 +45,11 @@ const View3DSpace = () => {
     alert('View 3D Space functionality coming soon!');
   };
 
+  const clearAll = () => {
+    setSelectedProducts([]);
+    localStorage.removeItem('selected_3d_products');
+  };
+
   return (
     <main className="main view-3d-space-main">
       <div className="container">
@@ -38,17 +59,46 @@ const View3DSpace = () => {
             Select products to view in your 3D space
           </p>
 
-          <div className="products-selection">
-            <div className="products-selection-grid">
-              {productsWith3D.map((product) => (
-                <Product3DCard
-                  key={product.id}
-                  product={product}
-                  isSelected={selectedProducts.includes(product.id)}
-                  onToggle={() => toggleProduct(product.id)}
-                />
-              ))}
+          {selectedProducts.length > 0 && (
+            <div style={{ marginBottom: '20px', textAlign: 'right' }}>
+              <button
+                onClick={clearAll}
+                style={{
+                  padding: '8px 16px',
+                  background: 'transparent',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  textTransform: 'uppercase',
+                  color: '#666'
+                }}
+              >
+                Clear All
+              </button>
             </div>
+          )}
+
+          <div className="products-selection">
+            {productsWith3D.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px', color: '#666' }}>
+                <p>No products added to 3D space yet.</p>
+                <p style={{ marginTop: '10px', fontSize: '14px' }}>
+                  Add products from the product page to view them here.
+                </p>
+              </div>
+            ) : (
+              <div className="products-selection-grid">
+                {productsWith3D.map((product) => (
+                  <Product3DCard
+                    key={product.id}
+                    product={product}
+                    isSelected={selectedProducts.includes(product.id)}
+                    onToggle={() => toggleProduct(product.id)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="view-3d-actions">

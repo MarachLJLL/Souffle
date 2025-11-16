@@ -7,7 +7,6 @@ import CartSidebar from './components/CartSidebar';
 import Marketplace from './pages/Marketplace';
 import Product from './pages/Product';
 import Create3DModel from './pages/Create3DModel';
-import CreateListing from './pages/CreateListing';
 import View3DSpace from './pages/View3DSpace';
 import './styles.css';
 
@@ -22,7 +21,6 @@ function App() {
               <Route path="/" element={<Marketplace />} />
               <Route path="/product" element={<Product />} />
               <Route path="/create-3d-model" element={<Create3DModel />} />
-              <Route path="/create-listing" element={<CreateListing />} />
               <Route path="/view-3d-space" element={<View3DSpace />} />
             </Routes>
             <Footer />
