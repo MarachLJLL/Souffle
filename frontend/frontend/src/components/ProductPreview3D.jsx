@@ -18,7 +18,7 @@ const ProductPreview3D = ({ productId, glbPath, measurements, imageFallback }) =
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 
     container.style.width = '100%';
-    container.style.minHeight = '380px';
+    // Height is now managed by CSS (400px) for consistent alignment
     container.style.position = 'relative';
     container.style.background = '#E4E2E2';
 
@@ -31,17 +31,16 @@ const ProductPreview3D = ({ productId, glbPath, measurements, imageFallback }) =
         container.parentElement?.clientWidth || container.offsetWidth || 300;
       containerWidth = Math.max(parentWidth, 300);
       const width = containerWidth;
-      let height = width / itemAspectRatio; // Use item's aspect ratio
       
-      // Constrain height to prevent extreme tall containers that cause gaps
-      // Max height should be reasonable (e.g., 1.5x the width for tall items)
-      const maxHeight = containerWidth * 1.5;
-      const minHeight = containerWidth * 0.75;
-      height = Math.max(minHeight, Math.min(height, maxHeight));
+      // Use fixed height from CSS (400px) to ensure all products align on same line
+      // Get height from computed style or use fixed 400px
+      const computedHeight = window.getComputedStyle(container).height;
+      const height = computedHeight ? parseInt(computedHeight, 10) : 400;
       
-      container.style.height = `${height}px`;
+      // Don't override the height - let CSS handle it
+      // container.style.height is now managed by CSS
       
-      // Recalculate actual aspect ratio after constraints
+      // Calculate aspect ratio from fixed dimensions
       const actualAspectRatio = width / height;
       return { width, height, aspectRatio: actualAspectRatio };
     };
@@ -91,7 +90,9 @@ const ProductPreview3D = ({ productId, glbPath, measurements, imageFallback }) =
     
     // Use the path directly like Product.jsx does
     // glbPath should already be like "/database/glbs/1.glb" from ProductsContext
-    const modelPath = glbPath || '/database/glbs/1.glb';
+    // Add cache-busting query parameter to force browser to reload updated GLB files
+    const basePath = glbPath || '/database/glbs/1.glb';
+    const modelPath = `${basePath}?v=${Date.now()}`;
     
     console.log(`Loading 3D model for product ${productId}: ${modelPath}`);
     
@@ -99,10 +100,13 @@ const ProductPreview3D = ({ productId, glbPath, measurements, imageFallback }) =
       modelPath,
       (gltf) => {
         model = gltf.scene;
+        
+        // First, center the model at origin for easier calculations
         const box = new THREE.Box3().setFromObject(model);
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
 
+        // Temporarily center the model
         model.position.x = -center.x;
         model.position.y = -center.y;
         model.position.z = -center.z;
@@ -125,72 +129,78 @@ const ProductPreview3D = ({ productId, glbPath, measurements, imageFallback }) =
           }
         });
 
-        // Scale based on real-world measurements to ensure proportional sizing
-        // The goal: larger real-world items should appear larger, not smaller
-        let scale = 1;
-        let itemMaxDim = 0; // Track the maximum dimension after scaling
+        // Normalize all models to the same vertical height for consistent sizing
+        // This ensures all products appear the same size and align at top and bottom
+        const targetHeight = 2.0; // Fixed target height for all models (same for all products)
+        const modelHeight = size.y; // Get the vertical height of the model
         
-        if (measurements && measurements.height) {
-          // Find the maximum dimension in measurements
-          const maxMeasurement = Math.max(
-            measurements.length || 0,
-            measurements.width || 0,
-            measurements.height || 0
-          );
-          
-          if (maxMeasurement > 0) {
-            // Use a smaller reference size (10cm) so chairs appear larger
-            const referenceSize = 10; // cm
-            
-            // Calculate what the bounding box size should be for this measurement
-            const maxDim = Math.max(size.x, size.y, size.z);
-            
-            // Normalize: larger measurements = larger visual size
-            const measurementRatio = maxMeasurement / referenceSize;
-            const boundingRatio = maxDim;
-            
-            // Target: make all items fit within ~2 units, but proportionally
-            const targetSize = 2.0;
-            const sizeBasedScale = targetSize / boundingRatio;
-            
-            // Adjust scale based on measurements to maintain proportions
-            const measurementBoost = Math.pow(measurementRatio, 0.3);
-            scale = sizeBasedScale * measurementBoost;
-            
-            // Clamp to reasonable range
-            scale = Math.max(0.6, Math.min(3.0, scale));
-            
-            // Calculate the maximum dimension after scaling for camera positioning
-            itemMaxDim = maxDim * scale;
-          } else {
-            // Fallback if measurements are invalid
-            const maxDim = Math.max(size.x, size.y, size.z);
-            if (maxDim > 2) {
-              scale = 2 / maxDim;
-            }
-            itemMaxDim = maxDim * scale;
-          }
-        } else {
-          // Fallback to bounding box scaling if no measurements
-          const maxDim = Math.max(size.x, size.y, size.z);
-          if (maxDim > 2) {
-            scale = 2 / maxDim;
-          }
-          itemMaxDim = maxDim * scale;
-        }
+        // Scale based on height to ensure all models fit within the same vertical space
+        let scale = targetHeight / modelHeight;
+        
+        // Clamp scale to reasonable range to prevent extreme scaling
+        scale = Math.max(0.5, Math.min(3.0, scale));
+        
+        // Calculate max dimension for camera positioning
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const itemMaxDim = maxDim * scale;
         
         model.scale.multiplyScalar(scale);
         
-        // Recalculate bounding box after scaling to get accurate dimensions
+        // Recalculate bounding box after scaling
+        // At this point, model is centered at (-center.x, -center.y, -center.z) and scaled
         const scaledBox = new THREE.Box3().setFromObject(model);
         const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
         const scaledSize = scaledBox.getSize(new THREE.Vector3());
         const scaledMaxDim = Math.max(scaledSize.x, scaledSize.y, scaledSize.z);
         
-        // Recenter the model after scaling to ensure it's perfectly centered at origin
-        model.position.x -= scaledCenter.x;
-        model.position.y -= scaledCenter.y;
-        model.position.z -= scaledCenter.z;
+        // Get the bounding box min/max and center in world space
+        const scaledMin = scaledBox.min; // World space minimum Y (bottom of model)
+        const scaledMax = scaledBox.max; // World space maximum Y (top of model)
+        const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+        
+        // Align all models at a uniform baseline Y position with consistent height
+        // This ensures all products (chairs, vases, lamps, plants) are the same size
+        // and align at both top and bottom
+        const baselineY = -1.5; // Fixed baseline for all models (bottom edge)
+        const topY = baselineY + targetHeight; // Fixed top edge (should be -1.5 + 2.0 = 0.5)
+        
+        // Calculate where the model currently is and where it needs to be
+        // The scaledMin.y is the current world-space bottom of the model
+        // We want it to be at baselineY, so adjust position accordingly
+        const currentBottomY = scaledMin.y;
+        const currentTopY = scaledMax.y;
+        const yOffset = baselineY - currentBottomY;
+        
+        // Center X and Z horizontally, but position Y so bottom edge aligns at baseline
+        model.position.x = -scaledCenter.x;
+        model.position.y = model.position.y + yOffset; // Adjust from current position
+        model.position.z = -scaledCenter.z;
+        
+        // Verify alignment by recalculating bounding box after final positioning
+        const finalBox = new THREE.Box3().setFromObject(model);
+        const finalMinY = finalBox.min.y;
+        const finalMaxY = finalBox.max.y;
+        
+        // Double-check: ensure all models have exactly the same bottom Y coordinate
+        // Fine-tune if needed to account for any floating point or calculation differences
+        const tolerance = 0.001;
+        if (Math.abs(finalMinY - baselineY) > tolerance) {
+          const correction = baselineY - finalMinY;
+          model.position.y += correction;
+          
+          // Recalculate after correction
+          const correctedBox = new THREE.Box3().setFromObject(model);
+          const correctedMinY = correctedBox.min.y;
+          const correctedMaxY = correctedBox.max.y;
+          
+          // Verify both bottom and top alignment
+          if (Math.abs(correctedMinY - baselineY) > tolerance) {
+            console.warn(`Product ${productId}: Bottom alignment may be off. Expected ${baselineY}, got ${correctedMinY}`);
+          }
+          if (Math.abs(correctedMaxY - topY) > tolerance * 2) {
+            console.warn(`Product ${productId}: Height may be inconsistent. Expected top at ${topY}, got ${correctedMaxY}`);
+          }
+        }
         
         // Calculate item's aspect ratio (width/height from top view)
         // Use X (width) and Y (height) for aspect ratio calculation
@@ -211,7 +221,8 @@ const ProductPreview3D = ({ productId, glbPath, measurements, imageFallback }) =
            ? Math.max(0.75, Math.min(1.25, visibleWidth / visibleHeight)) // Clamp between 0.75 and 1.25 (closer to square)
            : 1;
         
-        // Update container dimensions to match item's aspect ratio
+        // Use fixed container dimensions (don't adjust based on item aspect ratio)
+        // This ensures all products have the same container height and align properly
         const newDimensions = getDimensions();
         width = newDimensions.width;
         height = newDimensions.height;
@@ -219,6 +230,8 @@ const ProductPreview3D = ({ productId, glbPath, measurements, imageFallback }) =
         camera.aspect = aspectRatio;
         camera.updateProjectionMatrix();
         renderer.setSize(width, height);
+        
+        // Don't override container height - let CSS manage it for consistent alignment
         
         // Calculate camera distance to ensure item fits within view frustum
         // Use the diagonal of the bounding box to ensure everything fits
@@ -290,11 +303,11 @@ const ProductPreview3D = ({ productId, glbPath, measurements, imageFallback }) =
             container.clientWidth ||
             container.parentElement?.clientWidth ||
             300;
+          const newHeight = container.clientHeight || 400; // Use fixed height from CSS
           if (newWidth > 0) {
-            // Use the item's aspect ratio, not a fixed 1:1
-            const newHeight = newWidth / itemAspectRatio;
-            container.style.height = `${newHeight}px`;
-            camera.aspect = itemAspectRatio;
+            // Use fixed aspect ratio from container, not item's aspect ratio
+            const containerAspectRatio = newWidth / newHeight;
+            camera.aspect = containerAspectRatio;
             camera.updateProjectionMatrix();
             renderer.setSize(newWidth, newHeight);
           }
