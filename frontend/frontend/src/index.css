@@ -10,8 +10,14 @@ body {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #E4E2E2;
+}
+
+html {
+  background-color: #E4E2E2;
 }
 
 #root {
   min-height: 100vh;
+  background-color: #E4E2E2;
 }

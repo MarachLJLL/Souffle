@@ -1,9 +1,9 @@
 [
     {
         "id": 1,
-        "name": "Luis Chair",
+        "name": "IKEA fake plant",
         "price": 29.99,
-        "description": "A great chair",
+        "description": "A great plant",
         "image_paths": [
             "images/1_1.jpg",
             "images/1_2.jpg"
@@ -21,10 +21,10 @@
         "price": 67.67,
         "description": "An awesome chair",
         "image_paths": [
-            "images/2_1.jpg",
-            "images/2_2.jpg"
+            
         ],
         "glb": "glbs/2.glb",
+        "listing_image": "images/1_display.jpg",
         "measurements": {
             "length": 20.0,
             "width": 15.0,
@@ -33,38 +33,52 @@
     },
     {
         "id": 3,
-        "name": "Ikea Table",
+        "name": "Sculptural vase in green and blue",
         "image_paths": [
-            "images/3_display_1.png",
-            "images/3_display_2.png"
+            "images/3_display.png"
         ],
         "glb": "glbs/3.glb",
         "measurements": {
-            "length": 75.0,
-            "width": 74.0,
+            "length": 10.0,
+            "width": 10.0,
             "height": 30.0
         },
-        "price": 59.0,
-        "description": "White Ikea table",
-        "listing_image": "images/3_listing.png"
+        "price": 250.0,
+        "description": "Blue vase. Removable glass cylinder at interior.",
+        "listing_image": "images/3_display.png"
     },
     {
         "id": 4,
-        "name": "Structube Sofa",
+        "name": "Silver Pose Portable Table Lamp",
         "image_paths": [
-            "images/4_display_1.webp",
-            "images/4_display_2.webp",
-            "images/4_display_3.webp"
+            "images/4_display_1.png",
+            "images/4_display_2.png"
         ],
         "glb": "glbs/4.glb",
         "measurements": {
-            "length": 118.0,
-            "width": 53.0,
-            "height": 75.0
+            "length": 17.5,
+            "width": 17.5,
+            "height": 25.0
         },
-        "price": 139.0,
-        "description": "White Structure sofa",
-        "listing_image": "images/4_listing.webp"
+        "price": 350.0,
+        "description": "Wireless glossy polymer table lamp in silver tone.",
+        "listing_image": "images/4_display.png"
+    },
+    {
+        "id": 6,
+        "name": "Trottier Ugly Couch",
+        "price": 0.67,
+        "description": "Couch found in cafeterria of Trottier",
+        "image_paths": [
+            "images/6_listing.png"
+        ],
+        "glb": "glbs/6.glb",
+        "measurements": {
+            "length": 213.0,
+            "width": 90.0,
+            "height": 70.0
+        },
+        "listing_image": "images/6_listing.png"
     },
     {
         "id": 8,
@@ -119,5 +133,21 @@
         "price": 20.0,
         "description": "please",
         "listing_image": "images/10_listing.jpg"
+    },
+    {
+        "id": 11,
+        "name": "Red Bell Portable Table Lamp",
+        "image_paths": [
+            "images/11_display_1.png"
+        ],
+        "glb": "glbs/11.glb",
+        "measurements": {
+            "length": 19.0,
+            "width": 8.0,
+            "height": 27.0
+        },
+        "price": 360.0,
+        "description": "High-gloss powder-coated table lamp in red. Frosted glass light diffuser at shade.",
+        "listing_image": "images/11_listing.png"
     }
 ]

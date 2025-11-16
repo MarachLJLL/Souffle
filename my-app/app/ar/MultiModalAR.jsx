@@ -8,6 +8,7 @@ import { ARButton } from "three/examples/jsm/webxr/ARButton.js";
 export default function MultiModelAR({ modelUrls, modelRealSizes }) {
   const containerRef = useRef(null);
   const rendererRef = useRef(null);
+  const arButtonRef = useRef(null);
 
   const [supportStatus, setSupportStatus] = useState("checking");
   const [supportMessage, setSupportMessage] = useState(
@@ -221,6 +222,10 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
         alpha: true,
       });
       rendererRef.current = renderer;
+      // Improve visual quality and enable soft shadows
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.xr.enabled = true;
       // Transparent clear so camera feed is visible
@@ -228,11 +233,19 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
 
       containerRef.current.appendChild(renderer.domElement);
 
-      const ambient = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1.0);
+      const ambient = new THREE.HemisphereLight(0xffffff, 0x444466, 0.6);
       scene.add(ambient);
 
-      const directional = new THREE.DirectionalLight(0xffffff, 0.6);
+      const directional = new THREE.DirectionalLight(0xffffff, 1.0);
       directional.position.set(1, 3, 2);
+      directional.castShadow = true;
+      directional.shadow.mapSize.set(1024, 1024);
+      directional.shadow.camera.near = 0.01;
+      directional.shadow.camera.far = 10;
+      directional.shadow.camera.left = -2;
+      directional.shadow.camera.right = 2;
+      directional.shadow.camera.top = 2;
+      directional.shadow.camera.bottom = -2;
       scene.add(directional);
 
       const ringGeo = new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2);
@@ -339,11 +352,17 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
         optionalFeatures: ["dom-overlay"],
         domOverlay: overlayRoot ? { root: overlayRoot } : undefined,
       });
-      // Nudge the Start AR button up from the very bottom of the screen
-      arButton.style.position = "absolute";
-      arButton.style.bottom = "88px"; // move up a bit so it clears the bottom sheet
-      arButton.style.left = "50%";
-      arButton.style.transform = "translateX(-50%)";
+      // Keep the real ARButton in the DOM for WebXR logic, but hide it visually.
+      // We'll drive it via a custom centered "START AR" button in our React UI.
+      arButton.style.position = "fixed";
+      arButton.style.bottom = "0";
+      arButton.style.left = "0";
+      arButton.style.width = "1px";
+      arButton.style.height = "1px";
+      arButton.style.opacity = "0";
+      arButton.style.pointerEvents = "none";
+      arButton.style.margin = "0";
+      arButtonRef.current = arButton;
       containerRef.current.appendChild(arButton);
 
       controller = renderer.xr.getController(0);
@@ -365,6 +384,13 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
         // First time: create and remember a single instance for this model
         if (!instance) {
           instance = base.clone(true);
+          // Enable shadows on all meshes of this instance
+          instance.traverse((obj) => {
+            if (obj.isMesh) {
+              obj.castShadow = true;
+              obj.receiveShadow = true;
+            }
+          });
           placedGroup.add(instance);
           instances[index] = instance;
         }
@@ -493,6 +519,28 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
 
         // Parent helper to the instance so it rotates/moves with the model
         instance.add(helperGroup);
+
+        // Attach or update a subtle shadow plane under the model to anchor it visually
+        const anyInstance = instance;
+        const maxHorizontal = Math.max(size.x, size.z) || 0.6;
+        if (!anyInstance.userData.shadowPlane) {
+          const planeGeo = new THREE.CircleGeometry(maxHorizontal * 0.6, 32);
+          const shadowMat = new THREE.ShadowMaterial({ opacity: 0.4 });
+          const shadowPlane = new THREE.Mesh(planeGeo, shadowMat);
+          shadowPlane.rotation.x = -Math.PI / 2;
+          shadowPlane.receiveShadow = true;
+          shadowPlane.position.y = -size.y / 2;
+          anyInstance.add(shadowPlane);
+          anyInstance.userData.shadowPlane = shadowPlane;
+        } else {
+          const shadowPlane = anyInstance.userData.shadowPlane;
+          shadowPlane.position.y = -size.y / 2;
+          shadowPlane.geometry.dispose();
+          shadowPlane.geometry = new THREE.CircleGeometry(
+            maxHorizontal * 0.6,
+            32
+          );
+        }
       });
       scene.add(controller);
 
@@ -606,6 +654,24 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
 
   return (
     <div className="relative w-full h-full">
+      {/* Centered custom START AR button that triggers the hidden WebXR ARButton */}
+      {supportStatus === "supported" && !isARSessionActive && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-20">
+          <button
+            type="button"
+            className="pointer-events-auto rounded-full bg-white px-6 py-3 text-sm font-semibold text-black shadow-lg"
+            onClick={() => {
+              lastUiInteractionRef.current = performance.now();
+              if (arButtonRef.current) {
+                arButtonRef.current.click();
+              }
+            }}
+          >
+            START AR
+          </button>
+        </div>
+      )}
+
       {/* WebXR canvas container */}
       <div
         ref={containerRef}
@@ -663,7 +729,7 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
                     ))}
                   </div>
 
-                  {/* Actions */}
+                  {/* Actions (rotation + bounds toggle) */}
                   <div className="mb-2 grid grid-cols-2 gap-2 text-[10px]">
                     <button
                       type="button"
@@ -685,26 +751,20 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
                     >
                       Rotate ⟳
                     </button>
-                    <button
-                      type="button"
-                      className={`rounded px-2 py-1 ${
-                        showBounds ? "bg-white text-black" : "bg-white/10 text-white"
-                      }`}
-                      onClick={() => {
-                        lastUiInteractionRef.current = performance.now();
-                        setShowBounds((prev) => !prev);
-                      }}
-                    >
-                      {showBounds ? "Hide bounds" : "Show bounds"}
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded bg-white/10 px-2 py-1 disabled:opacity-50"
-                      onClick={handleRealifySnapshot}
-                      disabled={isRealifyLoading}
-                    >
-                      {isRealifyLoading ? "Generating…" : "Snapshot → Real photo"}
-                    </button>
+                    <div className="col-span-2 flex justify-center">
+                      <button
+                        type="button"
+                        className={`rounded px-4 py-1 ${
+                          showBounds ? "bg-white text-black" : "bg-white/10 text-white"
+                        }`}
+                        onClick={() => {
+                          lastUiInteractionRef.current = performance.now();
+                          setShowBounds((prev) => !prev);
+                        }}
+                      >
+                        {showBounds ? "Hide bounds" : "Show bounds"}
+                      </button>
+                    </div>
                   </div>
 
                   {/* Info / dimensions / errors */}

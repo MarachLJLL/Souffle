@@ -26,7 +26,7 @@ export default defineConfig({
             return;
           }
           
-          // Remove query parameters if any
+          // Remove query parameters for path resolution (cache-busting queries are ignored)
           const urlPath = req.url.split('?')[0];
           let relativePath = urlPath;
           
@@ -85,6 +85,15 @@ export default defineConfig({
             // Set appropriate headers
             res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
             res.setHeader('Content-Length', content.length);
+            
+            // Disable caching for JSON files (products.json should always be fresh)
+            if (ext === '.json') {
+              res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+              res.setHeader('Pragma', 'no-cache');
+              res.setHeader('Expires', '0');
+              res.setHeader('Access-Control-Allow-Origin', '*');
+              res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+            }
             
             // Enable CORS for GLB files
             if (ext === '.glb') {

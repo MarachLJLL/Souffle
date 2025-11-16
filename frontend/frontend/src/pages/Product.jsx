@@ -26,8 +26,8 @@ const Product = () => {
       setProduct(loadedProduct);
       setSelectedView(0); // Reset to 3D view when product changes
     } else {
-      // Try loading from database
-      fetch('/database/products.json')
+      // Try loading from database (with cache-busting to get latest version)
+      fetch(`/database/products.json?t=${Date.now()}`)
         .then((res) => {
           if (!res.ok) {
             throw new Error(`Failed to load products: ${res.status}`);
@@ -82,24 +82,25 @@ const Product = () => {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.setClearColor(0xf5f5f5, 1);
+    renderer.setClearColor(0xE4E2E2, 1);
     container.appendChild(renderer.domElement);
 
     camera.position.set(0, 0.3, 5);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // Maximum brightness - very high lighting for brightest models
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.8);
     directionalLight.position.set(5, 5, 5);
     directionalLight.castShadow = true;
     scene.add(directionalLight);
 
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.9);
     fillLight.position.set(-5, 3, -5);
     scene.add(fillLight);
 
-    const rimLight = new THREE.PointLight(0xffffff, 0.5);
+    const rimLight = new THREE.PointLight(0xffffff, 1.0);
     rimLight.position.set(0, 0, -5);
     scene.add(rimLight);
 
@@ -112,7 +113,7 @@ const Product = () => {
     controls.maxDistance = 10;
 
     const loader = new GLTFLoader();
-    const modelPath = product.glb || '/assets/models/Chair.glb';
+    const modelPath = product.glb || '/database/glbs/1.glb';
 
     loader.load(
       modelPath,
@@ -222,20 +223,20 @@ const Product = () => {
 
     camera.position.set(0, 0.3, 3);
 
-    // Simple lighting for thumbnail
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    // Maximum brightness for thumbnail
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.6);
     directionalLight.position.set(5, 5, 5);
     scene.add(directionalLight);
 
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.8);
     fillLight.position.set(-5, 3, -5);
     scene.add(fillLight);
 
     const loader = new GLTFLoader();
-    const modelPath = product.glb || '/assets/models/Chair.glb';
+    const modelPath = product.glb || '/database/glbs/1.glb';
 
     loader.load(
       modelPath,
@@ -356,6 +357,34 @@ const Product = () => {
     console.log(`Added ${quantity} ${product.name} to cart`);
   };
 
+  const handleAddTo3DSpace = async () => {
+    if (!product) {
+      console.warn('Cannot add to 3D space: product is null');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:8080/3dviewer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: product.id }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        console.error('Failed to add to 3D viewer list:', result.error || response.status);
+        alert('Failed to add to 3D viewer. Please try again.');
+        return;
+      }
+
+      // Redirect to View 3D Space page after successful add
+      navigate('/view-3d-space');
+    } catch (err) {
+      console.error('Error adding to 3D viewer:', err);
+      alert('Failed to add to 3D viewer. Please try again.');
+    }
+  };
+
   if (!product) {
     return (
       <main className="product-main">
@@ -461,7 +490,13 @@ const Product = () => {
 
           <div className="product-3d-space-card">
             <p className="view-in-space-text">View it in your space</p>
-            <button className="add-to-3d-space-btn">ADD TO 3D SPACE</button>
+            <button
+              className="add-to-3d-space-btn"
+              type="button"
+              onClick={handleAddTo3DSpace}
+            >
+              ADD TO 3D SPACE
+            </button>
           </div>
 
           <div className="product-purchase-card">

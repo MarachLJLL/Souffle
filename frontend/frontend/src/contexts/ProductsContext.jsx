@@ -18,7 +18,9 @@ export const ProductsProvider = ({ children }) => {
   const loadProductsFromDatabase = async () => {
     try {
       // Vite middleware serves /database/ from root database/ folder (not public/database/)
-      const response = await fetch('/database/products.json');
+      // Add cache-busting query parameter to ensure we get the latest version
+      const cacheBuster = `?t=${Date.now()}`;
+      const response = await fetch(`/database/products.json${cacheBuster}`);
       
       if (!response.ok) {
         throw new Error(`Failed to load products: ${response.status} ${response.statusText}`);

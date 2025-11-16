@@ -35,7 +35,7 @@ const Carousel3D = () => {
       mouseDown: false,
       mouseDownX: undefined,
       mouseDownY: undefined,
-      radius: 12,
+      radius: 15,
       visibleCount: 3,
     };
 
@@ -72,22 +72,22 @@ const Carousel3D = () => {
     camera.position.set(0, 0, 15);
     carousel.camera = camera;
 
-    // Setup lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // Setup lights - maximum brightness for very bright models
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
     carousel.scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.8);
     directionalLight.position.set(5, 5, 5);
     directionalLight.castShadow = true;
     directionalLight.shadow.mapSize.width = 2048;
     directionalLight.shadow.mapSize.height = 2048;
     carousel.scene.add(directionalLight);
 
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.9);
     fillLight.position.set(-5, 3, -5);
     carousel.scene.add(fillLight);
 
-    const rimLight = new THREE.PointLight(0xffffff, 0.5);
+    const rimLight = new THREE.PointLight(0xffffff, 1.0);
     rimLight.position.set(0, 0, -5);
     carousel.scene.add(rimLight);
 
@@ -191,7 +191,7 @@ const Carousel3D = () => {
     }
 
     function positionModel(carousel, model, index, interpolatedCenter = null) {
-      const centerScale = 1.4;
+      const centerScale = 1.6;
       const sideScale = 0.85;
       const radius = carousel.radius;
       const visibleCount = carousel.visibleCount;
@@ -202,7 +202,7 @@ const Carousel3D = () => {
       const relativeIndex = getRelativeIndex(index, centerIndex, totalLength);
       
       // Calculate angle for circular positioning
-      const angleStep = Math.PI / 4; // 45 degrees between items
+      const angleStep = Math.PI / 3; // 60 degrees between items (increased for more gap)
       const angle = relativeIndex * angleStep;
       
       // Calculate position on circle

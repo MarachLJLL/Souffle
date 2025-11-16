@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useProducts } from '../contexts/ProductsContext';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import qrCode from '../assets/qr_code.png';
 
 const View3DSpace = () => {
   const { products } = useProducts();
@@ -10,10 +9,46 @@ const View3DSpace = () => {
   const [initializedSelection, setInitializedSelection] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [qrTargetUrl, setQrTargetUrl] = useState('');
+  const [viewerIds, setViewerIds] = useState(null);
 
-  // Filter to only show products with GLB files (limit to 4)
+  // Load the list of product IDs configured for the 3D viewer
+  useEffect(() => {
+    const loadViewerIds = async () => {
+      try {
+        // Fetch from backend so we get the up-to-date list written by /3dviewer
+        const res = await fetch('http://localhost:8080/3dviewer');
+        if (!res.ok) {
+          console.warn('Failed to load 3D viewer IDs:', res.status, res.statusText);
+          setViewerIds([]);
+          return;
+        }
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          const ids = data
+            .map((id) => Number(id))
+            .filter((id) => Number.isFinite(id) && id > 0);
+          setViewerIds(ids);
+        } else {
+          setViewerIds([]);
+        }
+      } catch (err) {
+        console.error('Error loading 3Dviewer.json:', err);
+        setViewerIds([]);
+      }
+    };
+
+    loadViewerIds();
+  }, []);
+
+  // Filter to only show products with GLB files and included in 3Dviewer.json (if present)
   const productsWith3D = products
     .filter((p) => p.glb)
+    .filter((p) => {
+      // If viewerIds is null, we haven't loaded yet – show nothing to avoid flicker
+      if (viewerIds === null) return false;
+      // Once loaded, only show products whose IDs are listed in 3Dviewer.json
+      return viewerIds.includes(p.id);
+    })
     .slice(0, 4);
 
   // On first load, start with all available 3D products selected
@@ -70,6 +105,29 @@ const View3DSpace = () => {
                   product={product}
                   isSelected={selectedProducts.includes(product.id)}
                   onToggle={() => toggleProduct(product.id)}
+                  onRemove={async () => {
+                    try {
+                      const res = await fetch('http://localhost:8080/3dviewer', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: product.id }),
+                      });
+                      const result = await res.json().catch(() => ({}));
+                      if (!res.ok) {
+                        console.error('Failed to remove from 3D viewer list:', result.error || res.status);
+                        alert('Failed to remove from 3D space. Please try again.');
+                        return;
+                      }
+                      // Update local viewerIds and selection state so UI reflects removal
+                      setViewerIds((prev) =>
+                        Array.isArray(prev) ? prev.filter((id) => id !== product.id) : prev
+                      );
+                      setSelectedProducts((prev) => prev.filter((id) => id !== product.id));
+                    } catch (err) {
+                      console.error('Error removing from 3D viewer:', err);
+                      alert('Failed to remove from 3D space. Please try again.');
+                    }
+                  }}
                 />
               ))}
             </div>
@@ -158,8 +216,9 @@ const View3DSpace = () => {
   );
 };
 
-const Product3DCard = ({ product, isSelected, onToggle }) => {
+const Product3DCard = ({ product, isSelected, onToggle, onRemove }) => {
   const containerRef = useRef(null);
+  const [hovered, setHovered] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current || !product.glb) return;
@@ -179,15 +238,21 @@ const Product3DCard = ({ product, isSelected, onToggle }) => {
 
     camera.position.set(0, 0.3, 5);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // Maximum brightness for very bright models
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.8);
     directionalLight.position.set(5, 5, 5);
     directionalLight.castShadow = true;
     scene.add(directionalLight);
+    
+    // Strong fill light to reduce harsh shadows
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.9);
+    fillLight.position.set(-5, 3, -5);
+    scene.add(fillLight);
 
-    const pointLight = new THREE.PointLight(0xffffff, 0.5);
+    const pointLight = new THREE.PointLight(0xffffff, 1.0);
     pointLight.position.set(0, 0, -5);
     scene.add(pointLight);
 
@@ -234,6 +299,8 @@ const Product3DCard = ({ product, isSelected, onToggle }) => {
     <div
       className={`product-selection-item ${isSelected ? 'selected' : ''}`}
       style={{ position: 'relative' }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       onClick={onToggle}
     >
       <div className="product-3d-viewer" ref={containerRef} />
@@ -259,6 +326,36 @@ const Product3DCard = ({ product, isSelected, onToggle }) => {
           <span style={{ fontSize: '11px' }}>✕</span>
           <span>Excluded</span>
         </div>
+      )}
+      {/* Permanent remove from 3D viewer list (minus icon in top-right on hover) */}
+      {onRemove && hovered && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            width: 20,
+            height: 20,
+            borderRadius: '50%',
+            backgroundColor: 'rgba(0,0,0,0.75)',
+            borderRadius: '999px',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontSize: '14px',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          −
+        </button>
       )}
       <div className="checkbox-container-bottom">
         <input
