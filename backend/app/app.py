@@ -337,18 +337,18 @@ def create_product_route():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/3dviewer", methods=["GET", "POST"])
+@app.route("/3dviewer", methods=["GET", "POST", "DELETE"])
 def viewer_ids_route():
     """
     Small helper endpoint for the 3D viewer:
-    - GET  /3dviewer  -> returns JSON array of product IDs
-    - POST /3dviewer  -> body { "id": <number> } appends ID (de-duplicated)
+    - GET    /3dviewer  -> returns JSON array of product IDs
+    - POST   /3dviewer  -> body { "id": <number> } appends ID (de-duplicated)
+    - DELETE /3dviewer  -> body { "id": <number> } removes ID from list
     """
     if request.method == "GET":
         ids = _load_viewer_ids()
         return jsonify(ids), 200
 
-    # POST
     data = request.get_json(silent=True) or {}
     product_id = data.get("id")
     try:
@@ -360,11 +360,22 @@ def viewer_ids_route():
         return jsonify({"error": "Invalid id"}), 400
 
     ids = _load_viewer_ids()
-    if numeric_id not in ids:
-        ids.append(numeric_id)
-        _save_viewer_ids(ids)
 
-    return jsonify({"ok": True, "ids": ids}), 200
+    if request.method == "POST":
+        # Append if not already present
+        if numeric_id not in ids:
+            ids.append(numeric_id)
+            _save_viewer_ids(ids)
+        return jsonify({"ok": True, "ids": ids}), 200
+
+    # DELETE – remove from list if present
+    if request.method == "DELETE":
+        if numeric_id in ids:
+            ids = [i for i in ids if i != numeric_id]
+            _save_viewer_ids(ids)
+        return jsonify({"ok": True, "ids": ids}), 200
+
+    return jsonify({"error": "Unsupported method"}), 405
 
 # --- Main Execution ---
 if __name__ == "__main__":
