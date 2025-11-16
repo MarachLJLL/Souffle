@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { useProducts } from '../contexts/ProductsContext';
+import loadingGif from '../assets/loading_art.gif';
 
 const Carousel3D = () => {
   const containerRef = useRef(null);
   const carouselRef = useRef(null);
   const { products, loading } = useProducts();
   const [availableModels, setAvailableModels] = useState([]);
+  const [modelsLoading, setModelsLoading] = useState(true);
 
   // Load only specific products for carousel (IDs: 10, 4, 7, 3)
   useEffect(() => {
@@ -56,7 +58,10 @@ const Carousel3D = () => {
   }, [products, loading]);
 
   useEffect(() => {
-    if (!containerRef.current || loading || availableModels.length === 0) return;
+    if (!containerRef.current || loading || availableModels.length === 0) {
+      setModelsLoading(true);
+      return;
+    }
     
     // Cleanup previous carousel if it exists
     if (carouselRef.current && carouselRef.current.renderer) {
@@ -66,6 +71,9 @@ const Carousel3D = () => {
       }
       prevRenderer.dispose();
     }
+
+    // Set loading to true when starting to load models
+    setModelsLoading(true);
 
     const container = containerRef.current;
     const carousel = {
@@ -237,6 +245,8 @@ const Carousel3D = () => {
             });
             createIndicators(carousel);
             startInitialAutoSwipes(carousel);
+            // Models are loaded, hide loading GIF
+            setModelsLoading(false);
           }
         },
         undefined,
@@ -633,7 +643,33 @@ const Carousel3D = () => {
 
   return (
     <section className="carousel-section">
-      <div className="carousel-container" ref={containerRef} id="carousel3D" />
+      <div className="carousel-container" ref={containerRef} id="carousel3D" style={{ position: 'relative' }}>
+        {modelsLoading && (
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 10,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '100%',
+            height: '100%'
+          }}>
+            <img 
+              src={loadingGif} 
+              alt="Loading..." 
+              style={{
+                maxWidth: '300px',
+                maxHeight: '300px',
+                width: 'auto',
+                height: 'auto'
+              }}
+            />
+          </div>
+        )}
+      </div>
       <div className="carousel-controls">
         <div className="carousel-indicators" id="carouselIndicators" />
       </div>
