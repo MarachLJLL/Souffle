@@ -2,13 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useProducts } from '../contexts/ProductsContext';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import qrCode from '../assets/qr_code.png';
 
 const View3DSpace = () => {
   const { products } = useProducts();
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [initializedSelection, setInitializedSelection] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [arUrl, setArUrl] = useState('');
 
   // Load products from localStorage on mount
   useEffect(() => {
@@ -48,11 +48,24 @@ const View3DSpace = () => {
   };
 
   const handleView3D = () => {
-    // Save selected products and navigate (not fully implemented)
+    // Save selected products for same-device fallback
     localStorage.setItem(
       'selected_3d_products',
       JSON.stringify(selectedProducts)
     );
+
+    // Build AR URL with selected IDs as query param for cross-device use
+    try {
+      const idsParam = selectedProducts.join(',');
+      const base =
+        import.meta.env.VITE_AR_BASE_URL || window.location.origin;
+      const url = `${base.replace(/\/+$/, '')}/ar${idsParam ? `?ids=${encodeURIComponent(idsParam)}` : ''}`;
+      setArUrl(url);
+    } catch (e) {
+      console.error('Failed to build AR URL for QR code:', e);
+      setArUrl('');
+    }
+
     setShowQR(true);
   };
 
@@ -157,11 +170,32 @@ const View3DSpace = () => {
             >
               Scan this QR code to view your 3D space on another device:
             </p>
-            <img
-              src={qrCode}
-              alt="View 3D space QR code"
-              style={{ maxWidth: '220px', width: '100%', height: 'auto', marginBottom: '16px' }}
-            />
+            {arUrl && (
+              <>
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+                    arUrl
+                  )}`}
+                  alt="View 3D space QR code"
+                  style={{
+                    maxWidth: '220px',
+                    width: '100%',
+                    height: 'auto',
+                    marginBottom: '12px',
+                  }}
+                />
+                <p
+                  style={{
+                    fontSize: '10px',
+                    color: '#666',
+                    wordBreak: 'break-all',
+                    marginBottom: '8px',
+                  }}
+                >
+                  {arUrl}
+                </p>
+              </>
+            )}
             <button
               type="button"
               onClick={() => setShowQR(false)}
