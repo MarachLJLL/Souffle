@@ -82,7 +82,7 @@ const Product = () => {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.setClearColor(0xf5f5f5, 1);
+    renderer.setClearColor(0xE4E2E2, 1);
     container.appendChild(renderer.domElement);
 
     camera.position.set(0, 0.3, 5);

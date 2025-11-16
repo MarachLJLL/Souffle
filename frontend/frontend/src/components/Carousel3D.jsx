@@ -35,7 +35,7 @@ const Carousel3D = () => {
       mouseDown: false,
       mouseDownX: undefined,
       mouseDownY: undefined,
-      radius: 12,
+      radius: 15,
       visibleCount: 3,
     };
 
@@ -191,7 +191,7 @@ const Carousel3D = () => {
     }
 
     function positionModel(carousel, model, index, interpolatedCenter = null) {
-      const centerScale = 1.4;
+      const centerScale = 1.6;
       const sideScale = 0.85;
       const radius = carousel.radius;
       const visibleCount = carousel.visibleCount;
@@ -202,7 +202,7 @@ const Carousel3D = () => {
       const relativeIndex = getRelativeIndex(index, centerIndex, totalLength);
       
       // Calculate angle for circular positioning
-      const angleStep = Math.PI / 4; // 45 degrees between items
+      const angleStep = Math.PI / 3; // 60 degrees between items (increased for more gap)
       const angle = relativeIndex * angleStep;
       
       // Calculate position on circle

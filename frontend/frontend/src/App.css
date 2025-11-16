@@ -1,6 +1,6 @@
 :root {
   --primary-color: #5a4fcf;
-  --background-color: #f4f4f9;
+  --background-color: #E4E2E2;
   --card-background: #ffffff;
   --text-color: #333;
   --border-color: #ddd;
@@ -14,6 +14,14 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   background-color: var(--background-color);
   color: var(--text-color);
+}
+
+html {
+  background-color: #E4E2E2;
+}
+
+#root {
+  background-color: #E4E2E2;
 }
 
 .container {
