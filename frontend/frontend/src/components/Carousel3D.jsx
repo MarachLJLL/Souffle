@@ -41,16 +41,13 @@ const Carousel3D = () => {
 
     carouselRef.current = carousel;
 
-    // Duplicate models many times for seamless circular carousel
-    const duplicates = 20;
-    for (let i = 0; i < duplicates; i++) {
-      carousel.modelFiles.push(...carousel.originalModelFiles);
-    }
+    // Use only the original 4 models (no duplication for better performance)
+    carousel.modelFiles = [...carousel.originalModelFiles];
 
     const totalModels = carousel.modelFiles.length;
-    const middleIndex = Math.floor(totalModels / 2);
-    carousel.currentIndex = middleIndex;
-    carousel.targetIndex = middleIndex;
+    // Start at index 0 instead of middle
+    carousel.currentIndex = 0;
+    carousel.targetIndex = 0;
 
     // Setup renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -199,16 +196,9 @@ const Carousel3D = () => {
       );
     });
 
-    // Calculate relative index with proper wrapping
+    // Calculate relative index without wrapping (simple subtraction)
     function getRelativeIndex(index, centerIndex, totalLength) {
-      let relative = index - centerIndex;
-      // Normalize to [-totalLength/2, totalLength/2)
-      if (relative > totalLength / 2) {
-        relative -= totalLength;
-      } else if (relative < -totalLength / 2) {
-        relative += totalLength;
-      }
-      return relative;
+      return index - centerIndex;
     }
 
     function positionModel(carousel, model, index, interpolatedCenter = null) {
@@ -299,8 +289,8 @@ const Carousel3D = () => {
       carousel.originalModelFiles.forEach((_, index) => {
         const indicator = document.createElement('div');
         indicator.className = 'carousel-indicator';
-        const currentOriginalIndex = carousel.currentIndex % carousel.originalModelFiles.length;
-        if (index === currentOriginalIndex) {
+        // Since we no longer duplicate, currentIndex directly maps to the indicator
+        if (index === carousel.currentIndex) {
           indicator.classList.add('active');
         }
         indicator.addEventListener('click', () => {
@@ -315,53 +305,30 @@ const Carousel3D = () => {
       stopInitialAutoSwipes(carousel);
       carousel.userHasInteracted = true;
       
-      const totalLength = carousel.modelFiles.length;
-      const currentOriginalIndex = carousel.currentIndex % carousel.originalModelFiles.length;
-      
-      // Find the closest instance of the target model
-      let bestIndex = carousel.currentIndex;
-      let minDistance = Infinity;
-      
-      for (let i = 0; i < totalLength; i++) {
-        if (i % carousel.originalModelFiles.length === targetOriginalIndex) {
-          const distance = Math.min(
-            Math.abs(i - carousel.currentIndex),
-            totalLength - Math.abs(i - carousel.currentIndex)
-          );
-          if (distance < minDistance) {
-            minDistance = distance;
-            bestIndex = i;
-          }
-        }
-      }
-      
-      // Determine direction (prefer forward if equal distance)
-      let delta = bestIndex - carousel.currentIndex;
-      if (delta > totalLength / 2) {
-        delta -= totalLength;
-      } else if (delta < -totalLength / 2) {
-        delta += totalLength;
-      }
-      
-      carousel.targetIndex = bestIndex;
+      // Since we no longer duplicate models, targetOriginalIndex directly maps to model index
+      carousel.targetIndex = targetOriginalIndex;
+      const delta = targetOriginalIndex - carousel.currentIndex;
       carousel.isAnimating = true;
       updateCarousel(carousel, delta);
     }
 
     function next(carousel) {
       if (carousel.isAnimating) return;
-      stopInitialAutoSwipes(carousel);
       const totalLength = carousel.modelFiles.length;
-      carousel.targetIndex = (carousel.currentIndex + 1) % totalLength;
+      // Prevent going past the last item
+      if (carousel.currentIndex >= totalLength - 1) return;
+      stopInitialAutoSwipes(carousel);
+      carousel.targetIndex = carousel.currentIndex + 1;
       carousel.isAnimating = true;
       updateCarousel(carousel, 1); // Always move forward by 1
     }
 
     function prev(carousel) {
       if (carousel.isAnimating) return;
+      // Prevent going before the first item
+      if (carousel.currentIndex <= 0) return;
       stopInitialAutoSwipes(carousel);
-      const totalLength = carousel.modelFiles.length;
-      carousel.targetIndex = (carousel.currentIndex - 1 + totalLength) % totalLength;
+      carousel.targetIndex = carousel.currentIndex - 1;
       carousel.isAnimating = true;
       updateCarousel(carousel, -1); // Always move backward by 1
     }
@@ -386,8 +353,7 @@ const Carousel3D = () => {
 
         const easedProgress = easeInOutCubic(progress);
         
-        // Interpolate center index using the delta direction
-        // This ensures we always move in the correct visual direction
+        // Interpolate center index using the delta direction (no wrapping needed)
         const interpolatedCenter = startIndex + delta * easedProgress;
         
         // Update all models based on interpolated center
@@ -497,8 +463,10 @@ const Carousel3D = () => {
         const deltaX = touchEndX - touchStartX;
         if (Math.abs(deltaX) > 50) {
           if (deltaX > 0) {
+            // Swipe right = go to previous
             prev(carousel);
           } else {
+            // Swipe left = go to next
             next(carousel);
           }
         }
@@ -540,6 +508,7 @@ const Carousel3D = () => {
           const modelIndex = carousel.models.findIndex((m) => m === clickedModel);
           if (modelIndex !== -1) {
             const relativeIndex = getRelativeIndex(modelIndex, carousel.currentIndex, carousel.modelFiles.length);
+            // Only navigate if clicking on a different item
             if (relativeIndex < 0) {
               prev(carousel);
             } else if (relativeIndex > 0) {
