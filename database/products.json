@@ -83,5 +83,41 @@
         "price": 29.0,
         "description": "pls",
         "listing_image": "images/8_listing.jpg"
+    },
+    {
+        "id": 9,
+        "name": "good colour i beg",
+        "image_paths": [
+            "images/9_display_1.jpg",
+            "images/9_display_2.jpg",
+            "images/9_display_3.jpg"
+        ],
+        "glb": "glbs/9.glb",
+        "measurements": {
+            "length": 50.0,
+            "width": 50.0,
+            "height": 80.0
+        },
+        "price": 20.0,
+        "description": "good colour i beg",
+        "listing_image": "images/9_listing.jpg"
+    },
+    {
+        "id": 10,
+        "name": "kidney table",
+        "image_paths": [
+            "images/10_display_1.jpg",
+            "images/10_display_2.jpg",
+            "images/10_display_3.jpg"
+        ],
+        "glb": "glbs/10.glb",
+        "measurements": {
+            "length": 47.0,
+            "width": 79.0,
+            "height": 35.0
+        },
+        "price": 20.0,
+        "description": "please",
+        "listing_image": "images/10_listing.jpg"
     }
 ]
