@@ -12,7 +12,8 @@ from pipeline import (
 )
 
 app = Flask(__name__)
-CORS(app)
+# Configure CORS to allow requests from any origin
+CORS(app, resources={r"/*": {"origins": "*", "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"], "allow_headers": ["Content-Type", "Authorization"]}})
 
 # --- Directory Setup ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -114,6 +115,11 @@ def create_job_route():
 
     except MeshyApiException as e:
         return jsonify({"error": e.args[0], "details": e.details}), e.status_code
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint to verify the backend is running."""
+    return jsonify({"status": "ok", "message": "Backend is running"}), 200
 
 @app.get("/jobs")
 def get_all_jobs():
@@ -299,4 +305,4 @@ def create_product_route():
 # --- Main Execution ---
 if __name__ == "__main__":
     revive_pending_jobs() # Run this once on startup
-    app.run(debug=False, port=5000) # Use debug=False to avoid running revive_pending_jobs twice
+    app.run(debug=False, port=8080) # Use debug=False to avoid running revive_pending_jobs twice

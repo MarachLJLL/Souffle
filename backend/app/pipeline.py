@@ -65,20 +65,22 @@ def create_3d_model_from_images(image_files, prompt: str):
         api_url = MESHY_IMAGE_API_URL
         payload = {
             "image_url": image_data_uris[0],
+            "ai_model": "latest",  # Use Meshy 6 Preview (latest model)
             "enable_pbr": True,
             # Add texture_prompt only if the user provided one
             **({"texture_prompt": prompt} if prompt else {})
         }
-        print("Using Single Image to 3D endpoint.")
+        print("Using Single Image to 3D endpoint with latest model.")
     else:
         # MULTI-IMAGE API
         api_url = MESHY_MULTI_IMAGE_API_URL
         payload = {
             "image_urls": image_data_uris,
+            "ai_model": "latest",  # Use Meshy 6 Preview (latest model)
             "enable_pbr": True,
             **({"texture_prompt": prompt} if prompt else {})
         }
-        print("Using Multi-Image to 3D endpoint.")
+        print("Using Multi-Image to 3D endpoint with latest model.")
 
     try:
         # Send the request with a JSON payload
