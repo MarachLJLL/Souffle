@@ -65,5 +65,23 @@
         "price": 139.0,
         "description": "White Structure sofa",
         "listing_image": "images/4_listing.webp"
+    },
+    {
+        "id": 8,
+        "name": "colour pls",
+        "image_paths": [
+            "images/8_display_1.jpg",
+            "images/8_display_2.jpg",
+            "images/8_display_3.jpg"
+        ],
+        "glb": "glbs/8.glb",
+        "measurements": {
+            "length": 50.0,
+            "width": 50.0,
+            "height": 80.0
+        },
+        "price": 29.0,
+        "description": "pls",
+        "listing_image": "images/8_listing.jpg"
     }
 ]

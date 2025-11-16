@@ -6,7 +6,6 @@ import json
 from dotenv import load_dotenv
 import base64 # <-- Import the base64 library
 import time
-import trimesh
 
 # Load .env from project root (two levels up from backend/app/)
 pipeline_dir = os.path.dirname(os.path.abspath(__file__))
@@ -65,7 +64,9 @@ def create_3d_model_from_images(image_files, prompt: str):
         api_url = MESHY_IMAGE_API_URL
         payload = {
             "image_url": image_data_uris[0],
-            "enable_pbr": True,
+            "ai_model": "latest",  # Use Meshy 6 Preview for both model and texture
+            "should_texture": True,  # Explicitly enable texture generation with latest model
+            "enable_pbr": True,  # Generate PBR maps (metallic, roughness, normal)
             # Add texture_prompt only if the user provided one
             **({"texture_prompt": prompt} if prompt else {})
         }
@@ -75,7 +76,9 @@ def create_3d_model_from_images(image_files, prompt: str):
         api_url = MESHY_MULTI_IMAGE_API_URL
         payload = {
             "image_urls": image_data_uris,
-            "enable_pbr": True,
+            "ai_model": "latest",  # Use Meshy 6 Preview for texture (mesh uses Meshy-5)
+            "should_texture": True,  # Explicitly enable texture generation with latest model
+            "enable_pbr": True,  # Generate PBR maps (metallic, roughness, normal)
             **({"texture_prompt": prompt} if prompt else {})
         }
         print("Using Multi-Image to 3D endpoint.")
@@ -180,90 +183,6 @@ def poll_and_download_model(task_id, save_path):
             # Optional: decide if you want to break the loop on any exception
             time.sleep(15) # Wait a bit longer after an error
             
-def scale_glb_to_dimensions(glb_path, length_cm, width_cm, height_cm):
-    """
-    Scales a GLB file to match the provided dimensions in centimeters.
-    Maps dimensions intelligently: larger GLB dimension -> larger user dimension.
-    
-    Args:
-        glb_path: Path to the GLB file to scale
-        length_cm: Desired length in centimeters
-        width_cm: Desired width in centimeters
-        height_cm: Desired height in centimeters
-    
-    Returns:
-        True if scaling was successful, False otherwise
-    """
-    try:
-        # Load the GLB file
-        mesh = trimesh.load(glb_path)
-        
-        # Handle scene (multiple meshes) or single mesh
-        if isinstance(mesh, trimesh.Scene):
-            # Get the combined bounding box of all meshes in the scene
-            bounds = mesh.bounds
-        else:
-            # Single mesh
-            bounds = mesh.bounds
-        
-        # Calculate the actual dimensions of the model (in meters, since GLB uses meters)
-        model_dims = bounds[1] - bounds[0]  # max - min for x, y, z
-        model_length = model_dims[0]  # x-axis
-        model_width = model_dims[1]   # y-axis
-        model_height = model_dims[2]  # z-axis
-        
-        # Convert user dimensions from cm to meters
-        user_length = length_cm / 100.0
-        user_width = width_cm / 100.0
-        user_height = height_cm / 100.0
-        
-        # Create sorted lists to map larger to larger
-        model_dims_sorted = sorted([
-            (model_length, 0),  # (value, axis_index)
-            (model_width, 1),
-            (model_height, 2)
-        ], reverse=True)
-        
-        user_dims_sorted = sorted([
-            (user_length, 'length'),
-            (user_width, 'width'),
-            (user_height, 'height')
-        ], reverse=True)
-        
-        # Calculate scale factors for each axis
-        # Map: largest model dim -> largest user dim, etc.
-        scale_factors = [1.0, 1.0, 1.0]  # x, y, z
-        
-        for i, ((model_val, axis_idx), (user_val, _)) in enumerate(zip(model_dims_sorted, user_dims_sorted)):
-            if model_val > 0:  # Avoid division by zero
-                scale = user_val / model_val
-                scale_factors[axis_idx] = scale
-        
-        # Apply scaling
-        if isinstance(mesh, trimesh.Scene):
-            # Scale all meshes in the scene
-            for node_name in mesh.graph.nodes_geometry:
-                transform, geometry_name = mesh.graph[node_name]
-                geometry = mesh.geometry[geometry_name]
-                geometry.apply_scale(scale_factors)
-        else:
-            # Scale single mesh
-            mesh.apply_scale(scale_factors)
-        
-        # Export the scaled mesh back to GLB
-        mesh.export(glb_path)
-        
-        print(f"Scaled GLB: Model dimensions {model_dims} -> User dimensions [{user_length}, {user_width}, {user_height}] meters")
-        print(f"Scale factors applied: x={scale_factors[0]:.4f}, y={scale_factors[1]:.4f}, z={scale_factors[2]:.4f}")
-        
-        return True
-        
-    except Exception as e:
-        print(f"Error scaling GLB file {glb_path}: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
-
 def poll_and_update_job_status(meshy_task_id, json_path, glb_save_path, is_product=False, product_id=None):
     """
     Polls Meshy API and updates a local JSON file with the job's status.
@@ -313,29 +232,6 @@ def poll_and_update_job_status(meshy_task_id, json_path, glb_save_path, is_produ
                     with open(glb_save_path, 'wb') as f:
                         for chunk in r.iter_content(chunk_size=8192):
                             f.write(chunk)
-                
-                # Scale the GLB file if this is a product job with dimensions
-                if is_product:
-                    try:
-                        with open(json_path, 'r') as f:
-                            job_data = json.load(f)
-                        
-                        # Get dimensions from product_data
-                        if 'product_data' in job_data and 'measurements' in job_data['product_data']:
-                            measurements = job_data['product_data']['measurements']
-                            length_cm = measurements.get('length', 0)
-                            width_cm = measurements.get('width', 0)
-                            height_cm = measurements.get('height', 0)
-                            
-                            if length_cm > 0 and width_cm > 0 and height_cm > 0:
-                                print(f"THREAD: Scaling GLB to dimensions: {length_cm}cm x {width_cm}cm x {height_cm}cm")
-                                if scale_glb_to_dimensions(glb_save_path, length_cm, width_cm, height_cm):
-                                    print(f"THREAD: Successfully scaled GLB file")
-                                else:
-                                    print(f"THREAD: Warning - Failed to scale GLB file, using original")
-                    except Exception as scale_e:
-                        print(f"THREAD: Error during scaling: {scale_e}")
-                        # Continue even if scaling fails
                 
                 # Final update to the JSON file to mark as READY
                 with open(json_path, 'r+') as f:
