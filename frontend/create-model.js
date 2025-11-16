@@ -538,7 +538,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 // Send to backend
-                const response = await fetch('http://localhost:5000/create-product', {
+                const response = await fetch('http://localhost:8080/create-product', {
                     method: 'POST',
                     body: formData
                 });

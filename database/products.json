@@ -65,5 +65,39 @@
         "price": 139.0,
         "description": "White Structure sofa",
         "listing_image": "images/4_listing.webp"
+    },
+    {
+        "id": 5,
+        "name": "motor table",
+        "image_paths": [
+            "images/5_display_1.jpg",
+            "images/5_display_2.jpg"
+        ],
+        "glb": "glbs/5.glb",
+        "measurements": {
+            "length": 90.0,
+            "width": 90.0,
+            "height": 50.0
+        },
+        "price": 200.0,
+        "description": "motor table",
+        "listing_image": "images/5_listing.jpg"
+    },
+    {
+        "id": 6,
+        "name": "hd motor table",
+        "image_paths": [
+            "images/6_display_1.jpg",
+            "images/6_display_2.jpg"
+        ],
+        "glb": "glbs/6.glb",
+        "measurements": {
+            "length": 90.0,
+            "width": 90.0,
+            "height": 45.0
+        },
+        "price": 20.0,
+        "description": "hd motor",
+        "listing_image": "images/6_listing.jpg"
     }
 ]
