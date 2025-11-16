@@ -1,13 +1,71 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { useProducts } from '../contexts/ProductsContext';
 
 const Carousel3D = () => {
   const containerRef = useRef(null);
   const carouselRef = useRef(null);
+  const { products, loading } = useProducts();
+  const [availableModels, setAvailableModels] = useState([]);
+
+  // Load only specific products for carousel (IDs: 10, 4, 7, 3)
+  useEffect(() => {
+    if (loading || products.length === 0) return;
+
+    const checkGLBFiles = async () => {
+      // Only load these specific product IDs for the carousel
+      const carouselProductIds = [10, 4, 7, 3];
+      const validModels = [];
+      
+      // Load only the specified carousel products
+      for (const productId of carouselProductIds) {
+        const product = products.find(p => p.id === productId);
+        if (product && product.glb) {
+          try {
+            const response = await fetch(product.glb, { 
+              method: 'HEAD',
+              headers: { 'Range': 'bytes=0-0' }
+            });
+            if (response.ok || response.status === 206) {
+              validModels.push(product.glb);
+              console.log(`✅ GLB file found for carousel product ${product.id}: ${product.glb}`);
+            }
+          } catch (error) {
+            try {
+              const getResponse = await fetch(product.glb, {
+                method: 'GET',
+                headers: { 'Range': 'bytes=0-0' }
+              });
+              if (getResponse.ok || getResponse.status === 206) {
+                validModels.push(product.glb);
+                console.log(`✅ GLB file found for carousel product ${product.id}: ${product.glb}`);
+              }
+            } catch (getError) {
+              console.warn(`⚠️ Could not verify GLB file for product ${product.id}: ${product.glb}. Will attempt to load anyway.`);
+              validModels.push(product.glb);
+            }
+          }
+        }
+      }
+
+      setAvailableModels(validModels);
+    };
+
+    checkGLBFiles();
+  }, [products, loading]);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || loading || availableModels.length === 0) return;
+    
+    // Cleanup previous carousel if it exists
+    if (carouselRef.current && carouselRef.current.renderer) {
+      const prevRenderer = carouselRef.current.renderer;
+      if (prevRenderer.domElement && prevRenderer.domElement.parentNode) {
+        prevRenderer.domElement.parentNode.removeChild(prevRenderer.domElement);
+      }
+      prevRenderer.dispose();
+    }
 
     const container = containerRef.current;
     const carousel = {
@@ -25,12 +83,7 @@ const Carousel3D = () => {
       targetIndex: 0,
       rotationSpeed: { x: 0, y: 0 },
       autoSpinSpeed: 0.002, // Reduced from 0.005 for slower auto-spin
-      originalModelFiles: [
-        '/database/glbs/1.glb',
-        '/database/glbs/2.glb',
-        '/database/glbs/3.glb',
-        '/database/glbs/4.glb',
-      ],
+      originalModelFiles: availableModels, // Use dynamically loaded models (already GLB paths)
       modelFiles: [],
       mouseDown: false,
       mouseDownX: undefined,
@@ -41,11 +94,11 @@ const Carousel3D = () => {
 
     carouselRef.current = carousel;
 
-    // Use only the original 4 models (no duplication for better performance)
-    carousel.modelFiles = [...carousel.originalModelFiles];
+    // Use available models (no duplication for better performance)
+    carousel.modelFiles = [...availableModels];
 
     const totalModels = carousel.modelFiles.length;
-    // Start at index 0 instead of middle
+    // Start at index 0 (front of carousel)
     carousel.currentIndex = 0;
     carousel.targetIndex = 0;
 
@@ -576,7 +629,7 @@ const Carousel3D = () => {
       }
       renderer.dispose();
     };
-  }, []);
+  }, [availableModels]); // Re-run when available models change
 
   return (
     <section className="carousel-section">
