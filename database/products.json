@@ -2,7 +2,7 @@
     {
         "id": 1,
         "name": "IKEA fake plant",
-        "price": 29.99,
+        "price": 67.67,
         "description": "A great plant",
         "image_paths": [
             "images/1_1.jpg",
@@ -17,19 +17,19 @@
     },
     {
         "id": 2,
-        "name": "Redpath Chair",
-        "price": 67.67,
-        "description": "An awesome chair",
+        "name": "Red Bell Portable Table Lamp",
+        "price": 367.7,
+        "description": "High-gloss powder-coated table lamp in red. Frosted glass light diffuser at shade.",
         "image_paths": [
-            
+            "images/11_display_1.png"
         ],
         "glb": "glbs/2.glb",
-        "listing_image": "images/1_display.jpg",
         "measurements": {
-            "length": 20.0,
-            "width": 15.0,
-            "height": 7.5
-        }
+            "length": 19.0,
+            "width": 8.0,
+            "height": 27.0
+        },
+        "listing_image": "images/11_listing.png"
     },
     {
         "id": 3,
@@ -125,7 +125,7 @@
             "height": 80.0
         },
         "price": 20.0,
-        "description": "good colour i beg",
+        "description": "Powder-coated steel lounge chair in black",
         "listing_image": "images/9_listing.jpg"
     },
     {
@@ -148,18 +148,16 @@
     },
     {
         "id": 11,
-        "name": "Red Bell Portable Table Lamp",
-        "image_paths": [
-            "images/11_display_1.png"
-        ],
+        "name": "Gray Volute Platter",
+        "price": 67.67,
+        "description": "Hand-blown borosilicate glass serving platter in gray",
+        "image_paths": [],
         "glb": "glbs/11.glb",
+        "listing_image": "images/1_display.jpg",
         "measurements": {
-            "length": 19.0,
-            "width": 8.0,
-            "height": 27.0
-        },
-        "price": 360.0,
-        "description": "High-gloss powder-coated table lamp in red. Frosted glass light diffuser at shade.",
-        "listing_image": "images/11_listing.png"
+            "length": 20.0,
+            "width": 15.0,
+            "height": 7.5
+        }
     }
 ]
