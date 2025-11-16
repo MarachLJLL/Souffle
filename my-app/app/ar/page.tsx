@@ -111,7 +111,7 @@ export default function ARPage() {
   if (loading) {
     return (
       <main className="w-full h-screen flex items-center justify-center bg-black text-white">
-        <p className="text-sm">Loading AR models…</p>
+        <p className="text-sm">Loading your 3D scene…</p>
       </main>
     );
   }
@@ -127,8 +127,17 @@ export default function ARPage() {
   }
 
   return (
-    <main className="w-full h-screen">
-      <MultiModalAR modelUrls={modelUrls} modelRealSizes={modelRealSizes} />
+    <main className="w-full h-screen bg-black text-white flex flex-col items-center justify-center">
+      <div className="max-w-md px-6 text-center mb-6">
+        <h1 className="text-2xl font-semibold mb-2">View your 3D scene</h1>
+        <p className="text-sm text-gray-300">
+          Tap the <strong>START AR</strong> button to place your selected products
+          in your space.
+        </p>
+      </div>
+      <div className="w-full max-w-xl h-[60vh] flex items-center justify-center">
+        <MultiModalAR modelUrls={modelUrls} modelRealSizes={modelRealSizes} />
+      </div>
     </main>
   );
 }
