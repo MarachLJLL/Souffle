@@ -6,6 +6,8 @@ const Create3DModel = () => {
   const navigate = useNavigate();
   const { refreshProducts } = useProducts();
   const [isListing, setIsListing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     productName: '',
     length: '',
@@ -20,36 +22,132 @@ const Create3DModel = () => {
   const fileInputRef = useRef(null);
   const listingImageInputRef = useRef(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    if (isListing) {
-      // Save as listing
-      const listing = {
-        id: Date.now(),
-        name: formData.productName,
-        price: formData.price,
-        description: formData.description,
-        dimensions: {
-          length: formData.length,
-          width: formData.width,
-          height: formData.height,
-        },
-        image: listingImage
-          ? URL.createObjectURL(listingImage)
-          : null,
-      };
-
-      const savedListings =
-        JSON.parse(localStorage.getItem('souffle_listings') || '[]') || [];
-      savedListings.push(listing);
-      localStorage.setItem('souffle_listings', JSON.stringify(savedListings));
-
-      refreshProducts();
-      navigate('/');
+    // Validate that we have at least one image
+    if (uploadedFiles.length === 0) {
+      setError('Please upload at least one image for 3D model generation.');
+      return;
     }
-    // Otherwise just save to 3D space (not implemented yet)
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Create FormData to send to backend
+      const formDataToSend = new FormData();
+
+      // Use all uploaded files as both display images and reference images
+      // Display images are for the product page, reference images are for 3D model generation
+      uploadedFiles.forEach((file) => {
+        formDataToSend.append('displayImages', file);
+        formDataToSend.append('referenceImages', file);
+      });
+
+      // Add product information
+      formDataToSend.append('productName', formData.productName);
+      formDataToSend.append('length', formData.length);
+      formDataToSend.append('width', formData.width);
+      formDataToSend.append('height', formData.height);
+      formDataToSend.append('isListing', isListing.toString());
+
+      // Add listing-specific data if it's a listing
+      if (isListing) {
+        formDataToSend.append('description', formData.description);
+        formDataToSend.append('price', formData.price);
+        if (listingImage) {
+          formDataToSend.append('listingImage', listingImage);
+        }
+      }
+
+      // Send to backend API
+      const response = await fetch('http://localhost:8080/create-product', {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      // Check if response is OK
+      if (!response.ok) {
+        // Try to parse error response
+        let errorMessage = `Server error: ${response.status} ${response.statusText}`;
+        const contentType = response.headers.get('content-type');
+        
+        try {
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorData.details?.error || errorMessage;
+            console.error('Backend error:', errorData);
+          } else {
+            // If not JSON, try to get text
+            const errorText = await response.text();
+            console.error('Backend error (non-JSON):', errorText);
+            errorMessage = errorText || errorMessage;
+          }
+        } catch (parseError) {
+          console.error('Failed to parse error response:', parseError);
+          // Use default error message
+        }
+        setError(errorMessage);
+        setIsLoading(false);
+        return;
+      }
+
+      // Parse successful response
+      let result;
+      try {
+        result = await response.json();
+      } catch (jsonError) {
+        console.error('Failed to parse response as JSON:', jsonError);
+        setError('Received invalid response from server. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Success - refresh products and navigate
+      await refreshProducts();
+      
+      // Show success message
+      alert(
+        isListing
+          ? 'Listing created! 3D model is being generated...'
+          : '3D model is being generated...'
+      );
+
+      // Reset form
+      setFormData({
+        productName: '',
+        length: '',
+        width: '',
+        height: '',
+        description: '',
+        price: '',
+      });
+      setUploadedFiles([]);
+      setListingImage(null);
+      setIsListing(false);
+
+      // Navigate to marketplace
+      navigate('/');
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Error submitting form. Please try again.';
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        errorMessage = 'Network error: Could not connect to backend server. Please ensure the backend is running on port 8080.';
+      } else if (error.name === 'TypeError') {
+        errorMessage = `Network error: ${error.message}`;
+      } else {
+        errorMessage = `Error: ${error.message || error.toString()}`;
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const validateForm = () => {
@@ -327,13 +425,29 @@ const Create3DModel = () => {
                   </div>
                 </div>
 
+                {error && (
+                  <div className="form-error" style={{ 
+                    color: '#ff4444', 
+                    padding: '12px', 
+                    backgroundColor: '#ffe6e6', 
+                    borderRadius: '4px',
+                    marginBottom: '16px'
+                  }}>
+                    {error}
+                  </div>
+                )}
+
                 <div className="form-actions">
                   <button
                     type="submit"
-                    className={`submit-btn ${validateForm() ? 'enabled' : 'disabled'}`}
-                    disabled={!validateForm()}
+                    className={`submit-btn ${validateForm() && !isLoading && uploadedFiles.length > 0 ? 'enabled' : 'disabled'}`}
+                    disabled={!validateForm() || isLoading || uploadedFiles.length === 0}
                   >
-                    {isListing ? 'Create Listing' : 'Generate 3D Model'}
+                    {isLoading
+                      ? 'Processing...'
+                      : isListing
+                      ? 'Create Listing'
+                      : 'Generate 3D Model'}
                   </button>
                 </div>
               </form>

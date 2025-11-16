@@ -17,8 +17,7 @@ export const ProductsProvider = ({ children }) => {
   // Load products from database
   const loadProductsFromDatabase = async () => {
     try {
-      // In Vite, files in public/ are served at the root
-      // So /database/products.json should work if database/ is in public/
+      // Vite middleware serves /database/ from root database/ folder (not public/database/)
       const response = await fetch('/database/products.json');
       
       if (!response.ok) {
@@ -36,7 +35,7 @@ export const ProductsProvider = ({ children }) => {
       console.log('✅ Loaded products from /database/products.json');
 
       // Convert database products to our format
-      // In Vite, files in public/ are served at root, so /database/ works
+      // Paths use /database/ which is served from root database/ folder
       return dbProducts.map((product) => ({
         id: product.id,
         name: product.name,

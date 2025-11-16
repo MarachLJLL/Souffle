@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-const ProductPreview3D = ({ productId, glbPath, measurements }) => {
+const ProductPreview3D = ({ productId, glbPath, measurements, imageFallback }) => {
   const containerRef = useRef(null);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current || !glbPath) return;
@@ -59,31 +60,14 @@ const ProductPreview3D = ({ productId, glbPath, measurements }) => {
 
     const loader = new GLTFLoader();
     
-    // Ensure the path is correct for Vite public directory
+    // Use the path directly like Product.jsx does
     // glbPath should already be like "/database/glbs/1.glb" from ProductsContext
-    // But if it's not, normalize it
-    let modelPath = glbPath;
-    if (!modelPath.startsWith('/')) {
-      if (modelPath.startsWith('../')) {
-        modelPath = modelPath.replace('../', '/');
-      } else {
-        modelPath = `/${modelPath}`;
-      }
-    }
+    const modelPath = glbPath || '/assets/models/Chair.glb';
     
-    // Make sure it's a full URL for GLTFLoader (needs protocol and host for CORS)
-    // In development, use window.location.origin
-    const fullPath = modelPath.startsWith('http') 
-      ? modelPath 
-      : `${window.location.origin}${modelPath}`;
-    
-    console.log(`Loading 3D model for product ${productId}:`);
-    console.log(`  Original path: ${glbPath}`);
-    console.log(`  Normalized path: ${modelPath}`);
-    console.log(`  Full URL: ${fullPath}`);
+    console.log(`Loading 3D model for product ${productId}: ${modelPath}`);
     
     loader.load(
-      fullPath,
+      modelPath,
       (gltf) => {
         model = gltf.scene;
         const box = new THREE.Box3().setFromObject(model);
@@ -209,18 +193,18 @@ const ProductPreview3D = ({ productId, glbPath, measurements }) => {
       },
       (error) => {
         console.error(`3D preview error for product ${productId}:`, error);
-        console.error(`Attempted full URL: ${fullPath}`);
-        console.error(`Normalized path: ${modelPath}`);
+        console.error(`Attempted path: ${modelPath}`);
         console.error(`Original glbPath: ${glbPath}`);
         
-        // Try to get more details about the error
-        if (error.message && error.message.includes('<!doctype')) {
-          console.error('Got HTML response instead of GLB file - path is likely incorrect');
-        }
-        
-        if (container) {
-          container.innerHTML =
-            '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #999; font-size: 14px;">3D Preview Unavailable</div>';
+        // Fallback to image if available
+        if (imageFallback) {
+          setHasError(true);
+        } else {
+          // Only show error message if no image fallback
+          if (container) {
+            container.innerHTML =
+              '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #999; font-size: 14px;">3D Preview Unavailable</div>';
+          }
         }
       }
     );
@@ -231,7 +215,26 @@ const ProductPreview3D = ({ productId, glbPath, measurements }) => {
       }
       renderer.dispose();
     };
-  }, [productId, glbPath]);
+  }, [productId, glbPath, imageFallback]);
+
+  // Show image fallback if 3D preview failed
+  if (hasError && imageFallback) {
+    return (
+      <img
+        src={imageFallback}
+        alt={`Product ${productId}`}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          display: 'block',
+        }}
+        onError={(e) => {
+          e.target.style.display = 'none';
+        }}
+      />
+    );
+  }
 
   return <div ref={containerRef} id={`product-preview-${productId}`} />;
 };

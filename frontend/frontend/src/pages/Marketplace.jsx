@@ -72,6 +72,7 @@ const Marketplace = () => {
                       productId={product.id}
                       glbPath={product.glb}
                       measurements={product.measurements}
+                      imageFallback={product.image}
                     />
                   ) : product.image ? (
                     <img
