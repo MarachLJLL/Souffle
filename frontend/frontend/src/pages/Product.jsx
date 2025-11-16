@@ -356,6 +356,34 @@ const Product = () => {
     console.log(`Added ${quantity} ${product.name} to cart`);
   };
 
+  const handleAddTo3DSpace = async () => {
+    if (!product) {
+      console.warn('Cannot add to 3D space: product is null');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:8080/3dviewer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: product.id }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        console.error('Failed to add to 3D viewer list:', result.error || response.status);
+        alert('Failed to add to 3D viewer. Please try again.');
+        return;
+      }
+
+      // Redirect to View 3D Space page after successful add
+      navigate('/view-3d-space');
+    } catch (err) {
+      console.error('Error adding to 3D viewer:', err);
+      alert('Failed to add to 3D viewer. Please try again.');
+    }
+  };
+
   if (!product) {
     return (
       <main className="product-main">
@@ -461,7 +489,13 @@ const Product = () => {
 
           <div className="product-3d-space-card">
             <p className="view-in-space-text">View it in your space</p>
-            <button className="add-to-3d-space-btn">ADD TO 3D SPACE</button>
+            <button
+              className="add-to-3d-space-btn"
+              type="button"
+              onClick={handleAddTo3DSpace}
+            >
+              ADD TO 3D SPACE
+            </button>
           </div>
 
           <div className="product-purchase-card">
