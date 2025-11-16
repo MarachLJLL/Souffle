@@ -356,6 +356,58 @@ const Product = () => {
     console.log(`Added ${quantity} ${product.name} to cart`);
   };
 
+  const handleAddTo3DSpace = () => {
+    if (!product) {
+      console.warn('Cannot add to 3D space: product is null');
+      return;
+    }
+
+    if (!product.glb) {
+      alert('This product does not have a 3D model available.');
+      return;
+    }
+
+    // Get existing products in 3D space from localStorage
+    const existingProducts = JSON.parse(
+      localStorage.getItem('selected_3d_products') || '[]'
+    );
+
+    // Check if product is already added
+    if (existingProducts.includes(product.id)) {
+      // Optional: Show message that it's already added
+      const button = document.querySelector('.add-to-3d-space-btn');
+      if (button) {
+        const originalText = button.textContent;
+        button.textContent = 'ALREADY ADDED';
+        setTimeout(() => {
+          button.textContent = originalText;
+        }, 2000);
+      }
+      return;
+    }
+
+    // Add product ID to the list
+    const updatedProducts = [...existingProducts, product.id];
+    localStorage.setItem('selected_3d_products', JSON.stringify(updatedProducts));
+
+    // Visual feedback
+    const button = document.querySelector('.add-to-3d-space-btn');
+    if (button) {
+      const originalText = button.textContent;
+      button.textContent = 'ADDED TO 3D SPACE';
+      button.style.background = '#4CAF50';
+      setTimeout(() => {
+        button.textContent = originalText;
+        button.style.background = '';
+      }, 2000);
+    }
+
+    console.log(`Added ${product.name} to 3D space`);
+    
+    // Optionally navigate to 3D space page
+    // navigate('/view-3d-space');
+  };
+
   if (!product) {
     return (
       <main className="product-main">
@@ -461,7 +513,9 @@ const Product = () => {
 
           <div className="product-3d-space-card">
             <p className="view-in-space-text">View it in your space</p>
-            <button className="add-to-3d-space-btn">ADD TO 3D SPACE</button>
+            <button className="add-to-3d-space-btn" onClick={handleAddTo3DSpace}>
+              ADD TO 3D SPACE
+            </button>
           </div>
 
           <div className="product-purchase-card">

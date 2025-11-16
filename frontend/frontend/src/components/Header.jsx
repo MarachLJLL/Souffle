@@ -60,9 +60,6 @@ const Header = () => {
                 </div>
               )}
             </div>
-            <Link to="/create-listing" className="nav-link">
-              CREATE LISTING
-            </Link>
             <button className="cart-btn" id="cartBtn" onClick={toggleCart}>
               <span>CART</span>
               <span className="cart-count">{getCartCount()}</span>
