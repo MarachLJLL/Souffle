@@ -8,6 +8,7 @@ import { ARButton } from "three/examples/jsm/webxr/ARButton.js";
 export default function MultiModelAR({ modelUrls, modelRealSizes }) {
   const containerRef = useRef(null);
   const rendererRef = useRef(null);
+  const arButtonRef = useRef(null);
 
   const [supportStatus, setSupportStatus] = useState("checking");
   const [supportMessage, setSupportMessage] = useState(
@@ -339,11 +340,17 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
         optionalFeatures: ["dom-overlay"],
         domOverlay: overlayRoot ? { root: overlayRoot } : undefined,
       });
-      // Nudge the Start AR button up from the very bottom of the screen
-      arButton.style.position = "absolute";
-      arButton.style.bottom = "88px"; // move up a bit so it clears the bottom sheet
-      arButton.style.left = "50%";
-      arButton.style.transform = "translateX(-50%)";
+      // Keep the real ARButton in the DOM for WebXR logic, but hide it visually.
+      // We'll drive it via a custom centered "START AR" button in our React UI.
+      arButton.style.position = "fixed";
+      arButton.style.bottom = "0";
+      arButton.style.left = "0";
+      arButton.style.width = "1px";
+      arButton.style.height = "1px";
+      arButton.style.opacity = "0";
+      arButton.style.pointerEvents = "none";
+      arButton.style.margin = "0";
+      arButtonRef.current = arButton;
       containerRef.current.appendChild(arButton);
 
       controller = renderer.xr.getController(0);
@@ -606,6 +613,24 @@ export default function MultiModelAR({ modelUrls, modelRealSizes }) {
 
   return (
     <div className="relative w-full h-full">
+      {/* Centered custom START AR button that triggers the hidden WebXR ARButton */}
+      {supportStatus === "supported" && !isARSessionActive && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-20">
+          <button
+            type="button"
+            className="pointer-events-auto rounded-full bg-white px-6 py-3 text-sm font-semibold text-black shadow-lg"
+            onClick={() => {
+              lastUiInteractionRef.current = performance.now();
+              if (arButtonRef.current) {
+                arButtonRef.current.click();
+              }
+            }}
+          >
+            START AR
+          </button>
+        </div>
+      )}
+
       {/* WebXR canvas container */}
       <div
         ref={containerRef}
