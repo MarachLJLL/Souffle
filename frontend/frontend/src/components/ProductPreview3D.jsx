@@ -156,7 +156,7 @@ const ProductPreview3D = ({ productId, glbPath, measurements, imageFallback }) =
         // Get the bounding box min/max and center in world space
         const scaledMin = scaledBox.min; // World space minimum Y (bottom of model)
         const scaledMax = scaledBox.max; // World space maximum Y (top of model)
-        const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+        // scaledCenter is already declared above
         
         // Align all models at a uniform baseline Y position with consistent height
         // This ensures all products (chairs, vases, lamps, plants) are the same size
@@ -250,14 +250,7 @@ const ProductPreview3D = ({ productId, glbPath, measurements, imageFallback }) =
         // Clamp distance to reasonable bounds
         const cameraDistance = Math.max(3, Math.min(requiredDistance, 15));
         
-        // Recenter one more time after all changes to ensure perfect centering
-        const finalBox = new THREE.Box3().setFromObject(model);
-        const finalCenter = finalBox.getCenter(new THREE.Vector3());
-        model.position.x -= finalCenter.x;
-        model.position.y -= finalCenter.y;
-        model.position.z -= finalCenter.z;
-        
-        // Get final size after recentering
+        // Get final size after all transformations (model is already aligned and centered)
         const finalSizeBox = new THREE.Box3().setFromObject(model);
         const finalSize = finalSizeBox.getSize(new THREE.Vector3());
         

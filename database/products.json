@@ -5,8 +5,7 @@
         "price": 67.67,
         "description": "A great plant",
         "image_paths": [
-            "images/1_1.jpg",
-            "images/1_2.jpg"
+            "images/1_display.png"
         ],
         "glb": "glbs/1.glb",
         "measurements": {
@@ -21,7 +20,7 @@
         "price": 367.7,
         "description": "High-gloss powder-coated table lamp in red. Frosted glass light diffuser at shade.",
         "image_paths": [
-            "images/11_display_1.png"
+            "images/2_display.png"
         ],
         "glb": "glbs/2.glb",
         "measurements": {
@@ -29,7 +28,7 @@
             "width": 8.0,
             "height": 27.0
         },
-        "listing_image": "images/11_listing.png"
+        "listing_image": "images/2_display.png"
     },
     {
         "id": 3,
@@ -49,7 +48,7 @@
     },
     {
         "id": 4,
-        "name": "Silver Pose Portable Table Lamp",
+        "name": "Pink Panton Chair",
         "image_paths": [
             "images/4_display_1.png",
             "images/4_display_2.png"
@@ -61,8 +60,8 @@
             "height": 25.0
         },
         "price": 350.0,
-        "description": "Wireless glossy polymer table lamp in silver tone.",
-        "listing_image": "images/4_display.png"
+        "description": "Dyed-through polypropylene chair in pink.",
+        "listing_image": "images/4_display_2.png"
     },
     {
         "id": 6,
@@ -114,9 +113,7 @@
         "id": 9,
         "name": "Gray Hai Lounge Chair",
         "image_paths": [
-            "images/9_display_1.jpg",
-            "images/9_display_2.jpg",
-            "images/9_display_3.jpg"
+            "images/9_display.png"
         ],
         "glb": "glbs/9.glb",
         "measurements": {
@@ -126,15 +123,13 @@
         },
         "price": 20.0,
         "description": "Powder-coated steel lounge chair in black",
-        "listing_image": "images/9_listing.jpg"
+        "listing_image": "images/9_display.png"
     },
     {
         "id": 10,
         "name": "Brown Coffee Table",
         "image_paths": [
-            "images/10_display_1.jpg",
-            "images/10_display_2.jpg",
-            "images/10_display_3.jpg"
+            "images/10_display.png"
         ],
         "glb": "glbs/10.glb",
         "measurements": {
@@ -143,8 +138,8 @@
             "height": 35.0
         },
         "price": 20.0,
-        "description": "please",
-        "listing_image": "images/10_listing.jpg"
+        "description": "Stained solid beech coffee table in dark brown.",
+        "listing_image": "images/10_display.png"
     },
     {
         "id": 11,
