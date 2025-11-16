@@ -23,6 +23,7 @@ DATABASE_DIR = os.path.join(PROJECT_ROOT, 'database')
 IMAGES_DIR = os.path.join(DATABASE_DIR, 'images')
 GLBS_DIR = os.path.join(DATABASE_DIR, 'glbs')
 PRODUCTS_JSON = os.path.join(DATABASE_DIR, 'products.json')
+VIEWER_JSON = os.path.join(DATABASE_DIR, '3Dviewer.json')
 
 os.makedirs(JOBS_DIR, exist_ok=True)
 os.makedirs(MODELS_DIR, exist_ok=True)
@@ -177,6 +178,45 @@ def update_products_json(product_data):
     except Exception as e:
         print(f"Error updating products.json: {e}")
 
+
+# --- 3D Viewer ID Management ---
+
+def _load_viewer_ids():
+    """Load the list of product IDs used by the 3D viewer."""
+    try:
+        if not os.path.exists(VIEWER_JSON):
+            return []
+        with open(VIEWER_JSON, "r") as f:
+            raw = f.read().strip()
+            if not raw:
+                return []
+            data = json.loads(raw)
+            if isinstance(data, list):
+                ids = []
+                for x in data:
+                    try:
+                        val = int(x)
+                        if val > 0:
+                            ids.append(val)
+                    except (TypeError, ValueError):
+                        continue
+                return ids
+        return []
+    except Exception as e:
+        print(f"Error reading 3Dviewer.json: {e}")
+        return []
+
+
+def _save_viewer_ids(ids):
+    """Save a de-duplicated list of product IDs to 3Dviewer.json."""
+    try:
+        unique_ids = sorted(set(int(x) for x in ids if isinstance(x, (int, float, str)) and str(x).isdigit()))
+        with open(VIEWER_JSON, "w") as f:
+            json.dump(unique_ids, f, indent=2)
+        print(f"Updated 3Dviewer.json with IDs: {unique_ids}")
+    except Exception as e:
+        print(f"Error writing 3Dviewer.json: {e}")
+
 @app.post("/create-product")
 def create_product_route():
     """Creates a product from form data, saves images, and generates 3D model."""
@@ -295,6 +335,36 @@ def create_product_route():
     except Exception as e:
         print(f"Error creating product: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/3dviewer", methods=["GET", "POST"])
+def viewer_ids_route():
+    """
+    Small helper endpoint for the 3D viewer:
+    - GET  /3dviewer  -> returns JSON array of product IDs
+    - POST /3dviewer  -> body { "id": <number> } appends ID (de-duplicated)
+    """
+    if request.method == "GET":
+        ids = _load_viewer_ids()
+        return jsonify(ids), 200
+
+    # POST
+    data = request.get_json(silent=True) or {}
+    product_id = data.get("id")
+    try:
+        numeric_id = int(product_id)
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid or missing id"}), 400
+
+    if numeric_id <= 0:
+        return jsonify({"error": "Invalid id"}), 400
+
+    ids = _load_viewer_ids()
+    if numeric_id not in ids:
+        ids.append(numeric_id)
+        _save_viewer_ids(ids)
+
+    return jsonify({"ok": True, "ids": ids}), 200
 
 # --- Main Execution ---
 if __name__ == "__main__":
