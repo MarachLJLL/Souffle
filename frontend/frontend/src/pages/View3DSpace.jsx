@@ -2,10 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useProducts } from '../contexts/ProductsContext';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import qrCode from '../assets/qr_code.png';
 
 const View3DSpace = () => {
   const { products } = useProducts();
   const [selectedProducts, setSelectedProducts] = useState([]);
+  const [initializedSelection, setInitializedSelection] = useState(false);
+  const [showQR, setShowQR] = useState(false);
 
   // Load products from localStorage on mount
   useEffect(() => {
@@ -26,6 +29,14 @@ const View3DSpace = () => {
     ? products.filter((p) => p.glb && selectedProducts.includes(p.id))
     : products.filter((p) => p.glb).slice(0, 4);
 
+  // On first load, start with all available 3D products selected
+  useEffect(() => {
+    if (!initializedSelection && productsWith3D.length > 0) {
+      setSelectedProducts(productsWith3D.map((p) => p.id));
+      setInitializedSelection(true);
+    }
+  }, [initializedSelection, productsWith3D]);
+
   const toggleProduct = (productId) => {
     const updated = selectedProducts.includes(productId)
       ? selectedProducts.filter((id) => id !== productId)
@@ -42,7 +53,7 @@ const View3DSpace = () => {
       'selected_3d_products',
       JSON.stringify(selectedProducts)
     );
-    alert('View 3D Space functionality coming soon!');
+    setShowQR(true);
   };
 
   const clearAll = () => {
@@ -112,6 +123,65 @@ const View3DSpace = () => {
           </div>
         </div>
       </div>
+
+      {showQR && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: '12px',
+              padding: '20px',
+              maxWidth: '320px',
+              width: '90%',
+              textAlign: 'center',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
+            }}
+          >
+            <p
+              style={{
+                marginBottom: '12px',
+                fontSize: '14px',
+                color: '#333',
+                fontWeight: 500,
+              }}
+            >
+              Scan this QR code to view your 3D space on another device:
+            </p>
+            <img
+              src={qrCode}
+              alt="View 3D space QR code"
+              style={{ maxWidth: '220px', width: '100%', height: 'auto', marginBottom: '16px' }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowQR(false)}
+              style={{
+                marginTop: '4px',
+                padding: '8px 16px',
+                borderRadius: '999px',
+                border: 'none',
+                backgroundColor: '#000',
+                color: '#fff',
+                fontSize: '12px',
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 };
@@ -191,9 +261,33 @@ const Product3DCard = ({ product, isSelected, onToggle }) => {
   return (
     <div
       className={`product-selection-item ${isSelected ? 'selected' : ''}`}
+      style={{ position: 'relative' }}
       onClick={onToggle}
     >
       <div className="product-3d-viewer" ref={containerRef} />
+      {/* Deselect indicator overlay for clearer feedback */}
+      {!isSelected && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            backgroundColor: 'rgba(0,0,0,0.75)',
+            borderRadius: '999px',
+            padding: '4px 8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            color: '#fff',
+            fontSize: '10px',
+            fontWeight: 500,
+          }}
+        >
+          {/* You can replace this ✕ with a custom PNG icon if desired */}
+          <span style={{ fontSize: '11px' }}>✕</span>
+          <span>Excluded</span>
+        </div>
+      )}
       <div className="checkbox-container-bottom">
         <input
           type="checkbox"

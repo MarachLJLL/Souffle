@@ -6,6 +6,8 @@ const Create3DModel = () => {
   const navigate = useNavigate();
   const { refreshProducts } = useProducts();
   const [isListing, setIsListing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     productName: '',
     length: '',
@@ -20,36 +22,93 @@ const Create3DModel = () => {
   const fileInputRef = useRef(null);
   const listingImageInputRef = useRef(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    if (isListing) {
-      // Save as listing
-      const listing = {
-        id: Date.now(),
-        name: formData.productName,
-        price: formData.price,
-        description: formData.description,
-        dimensions: {
-          length: formData.length,
-          width: formData.width,
-          height: formData.height,
-        },
-        image: listingImage
-          ? URL.createObjectURL(listingImage)
-          : null,
-      };
+    setIsSubmitting(true);
+    setError(null);
 
-      const savedListings =
-        JSON.parse(localStorage.getItem('souffle_listings') || '[]') || [];
-      savedListings.push(listing);
-      localStorage.setItem('souffle_listings', JSON.stringify(savedListings));
+    try {
+      // Create FormData for backend
+      const formDataToSend = new FormData();
+      
+      // Add reference images (for 3D model generation)
+      // Using the same images for both display and reference
+      uploadedFiles.forEach((file) => {
+        formDataToSend.append('referenceImages', file);
+        formDataToSend.append('displayImages', file);
+      });
+      
+      // Add product information
+      formDataToSend.append('productName', formData.productName);
+      formDataToSend.append('length', formData.length);
+      formDataToSend.append('width', formData.width);
+      formDataToSend.append('height', formData.height);
+      formDataToSend.append('isListing', isListing.toString());
+      
+      // Add listing-specific data if it's a listing
+      if (isListing) {
+        formDataToSend.append('description', formData.description);
+        formDataToSend.append('price', formData.price);
+        if (listingImage) {
+          formDataToSend.append('listingImage', listingImage);
+        }
+      }
+
+      // Send to backend
+      const response = await fetch('http://localhost:5000/create-product', {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create product');
+      }
+
+      // Success - refresh products and navigate
+      if (isListing) {
+        // For listings, also save to localStorage for backward compatibility
+        const listing = {
+          id: result.product_id,
+          name: formData.productName,
+          price: formData.price,
+          description: formData.description,
+          dimensions: {
+            length: formData.length,
+            width: formData.width,
+            height: formData.height,
+          },
+          image: listingImage
+            ? URL.createObjectURL(listingImage)
+            : null,
+        };
+
+        const savedListings =
+          JSON.parse(localStorage.getItem('souffle_listings') || '[]') || [];
+        savedListings.push(listing);
+        localStorage.setItem('souffle_listings', JSON.stringify(savedListings));
+      }
 
       refreshProducts();
+      
+      // Show success message
+      alert(
+        isListing
+          ? 'Listing created! 3D model is being generated...'
+          : '3D model is being generated...'
+      );
+      
+      // Navigate to home page
       navigate('/');
+    } catch (err) {
+      console.error('Error creating product:', err);
+      setError(err.message || 'Failed to create product. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
-    // Otherwise just save to 3D space (not implemented yet)
   };
 
   const validateForm = () => {
@@ -57,6 +116,9 @@ const Create3DModel = () => {
       return false;
     }
     if (isListing && (!formData.description || !formData.price)) {
+      return false;
+    }
+    if (uploadedFiles.length === 0) {
       return false;
     }
     return true;
@@ -101,6 +163,18 @@ const Create3DModel = () => {
               Upload images from multiple angles and provide product details to generate your 3D model
             </p>
           </div>
+
+          {error && (
+            <div style={{ 
+              padding: '12px', 
+              marginBottom: '20px', 
+              backgroundColor: '#fee', 
+              color: '#c33', 
+              borderRadius: '4px' 
+            }}>
+              {error}
+            </div>
+          )}
 
           <div className="create-model-layout">
             <div className="upload-side">
@@ -216,6 +290,7 @@ const Create3DModel = () => {
 
             <div className="form-side">
               <form className="create-model-form" onSubmit={handleSubmit}>
+                {/* ... existing form fields ... */}
                 <div className="form-section">
                   <label className="form-label">Product Information</label>
                   <div className="checkbox-wrapper">
@@ -224,6 +299,7 @@ const Create3DModel = () => {
                         type="checkbox"
                         checked={isListing}
                         onChange={(e) => setIsListing(e.target.checked)}
+                        disabled={isSubmitting}
                       />
                       <span className="checkbox-label">This is a listing</span>
                     </label>
@@ -241,6 +317,7 @@ const Create3DModel = () => {
                       setFormData({ ...formData, productName: e.target.value })
                     }
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
 
@@ -256,6 +333,7 @@ const Create3DModel = () => {
                         setFormData({ ...formData, description: e.target.value })
                       }
                       required={isListing}
+                      disabled={isSubmitting}
                     />
                     <label className="input-label">Price ($)</label>
                     <div className="price-input-wrapper">
@@ -292,6 +370,7 @@ const Create3DModel = () => {
                           setFormData({ ...formData, length: e.target.value })
                         }
                         required
+                        disabled={isSubmitting}
                       />
                     </div>
                     <div className="dimension-input">
@@ -307,6 +386,7 @@ const Create3DModel = () => {
                           setFormData({ ...formData, width: e.target.value })
                         }
                         required
+                        disabled={isSubmitting}
                       />
                     </div>
                     <div className="dimension-input">
@@ -322,6 +402,7 @@ const Create3DModel = () => {
                           setFormData({ ...formData, height: e.target.value })
                         }
                         required
+                        disabled={isSubmitting}
                       />
                     </div>
                   </div>
@@ -346,4 +427,3 @@ const Create3DModel = () => {
 };
 
 export default Create3DModel;
-
