@@ -10,8 +10,8 @@
         "glb": "glbs/1.glb",
         "measurements": {
             "length": 15.0,
-            "width": 10.0,
-            "height": 5.0
+            "width": 15.0,
+            "height": 30.0
         }
     },
     {
@@ -24,9 +24,9 @@
         ],
         "glb": "glbs/2.glb",
         "measurements": {
-            "length": 19.0,
-            "width": 8.0,
-            "height": 27.0
+            "length": 27.0,
+            "width": 20.0,
+            "height": 30.0
         },
         "listing_image": "images/2_display.png"
     },
@@ -38,8 +38,8 @@
         ],
         "glb": "glbs/3.glb",
         "measurements": {
-            "length": 10.0,
-            "width": 10.0,
+            "length": 26.0,
+            "width": 26.0,
             "height": 30.0
         },
         "price": 250.0,
@@ -55,9 +55,9 @@
         ],
         "glb": "glbs/4.glb",
         "measurements": {
-            "length": 17.5,
-            "width": 17.5,
-            "height": 25.0
+            "length": 61,
+            "width": 50,
+            "height": 86.0
         },
         "price": 350.0,
         "description": "Dyed-through polypropylene chair in pink.",
@@ -101,12 +101,12 @@
         ],
         "glb": "glbs/8.glb",
         "measurements": {
-            "length": 50.0,
-            "width": 50.0,
-            "height": 80.0
+            "length": 4.0,
+            "width": 4.0,
+            "height": 10.0
         },
         "price": 29.0,
-        "description": "pls",
+        "description": "A wonderful candle.",
         "listing_image": "images/8_display.jpg"
     },
     {
@@ -117,9 +117,9 @@
         ],
         "glb": "glbs/9.glb",
         "measurements": {
-            "length": 50.0,
-            "width": 50.0,
-            "height": 80.0
+            "length": 87.0,
+            "width": 87.0,
+            "height": 100.0
         },
         "price": 20.0,
         "description": "Powder-coated steel lounge chair in black",
@@ -151,8 +151,8 @@
         "listing_image": "images/1_display.jpg",
         "measurements": {
             "length": 20.0,
-            "width": 15.0,
-            "height": 7.5
+            "width": 20.0,
+            "height": 20.5
         }
     }
 ]
