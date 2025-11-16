@@ -26,8 +26,8 @@ const Product = () => {
       setProduct(loadedProduct);
       setSelectedView(0); // Reset to 3D view when product changes
     } else {
-      // Try loading from database
-      fetch('/database/products.json')
+      // Try loading from database (with cache-busting to get latest version)
+      fetch(`/database/products.json?t=${Date.now()}`)
         .then((res) => {
           if (!res.ok) {
             throw new Error(`Failed to load products: ${res.status}`);
@@ -112,7 +112,7 @@ const Product = () => {
     controls.maxDistance = 10;
 
     const loader = new GLTFLoader();
-    const modelPath = product.glb || '/assets/models/Chair.glb';
+    const modelPath = product.glb || '/database/glbs/1.glb';
 
     loader.load(
       modelPath,
@@ -235,7 +235,7 @@ const Product = () => {
     scene.add(fillLight);
 
     const loader = new GLTFLoader();
-    const modelPath = product.glb || '/assets/models/Chair.glb';
+    const modelPath = product.glb || '/database/glbs/1.glb';
 
     loader.load(
       modelPath,

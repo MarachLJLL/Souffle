@@ -1,0 +1,28 @@
+{
+    "local_id": 3,
+    "meshy_task_id": "019a8b53-9336-75b6-a629-d4866e684161",
+    "prompt": "Red Bell Portable Table Lamp",
+    "status": "READY",
+    "status_meshy": "SUCCEEDED",
+    "progress": 100,
+    "created_at": 1763274102,
+    "error_message": null,
+    "is_product": true,
+    "product_id": 11,
+    "product_data": {
+        "id": 11,
+        "name": "Red Bell Portable Table Lamp",
+        "image_paths": [
+            "images/11_display_1.png"
+        ],
+        "glb": "glbs/11.glb",
+        "measurements": {
+            "length": 19.0,
+            "width": 8.0,
+            "height": 27.0
+        },
+        "price": 360.0,
+        "description": "High-gloss powder-coated table lamp in red. Frosted glass light diffuser at shade.",
+        "listing_image": "images/11_listing.png"
+    }
+}

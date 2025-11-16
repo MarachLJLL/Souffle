@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useProducts } from '../contexts/ProductsContext';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import qrCode from '../assets/qr_code.png';
 
 const View3DSpace = () => {
   const { products } = useProducts();
