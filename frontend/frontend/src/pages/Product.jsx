@@ -113,7 +113,9 @@ const Product = () => {
     controls.maxDistance = 10;
 
     const loader = new GLTFLoader();
-    const modelPath = product.glb || '/database/glbs/1.glb';
+    // Add cache-busting query parameter to force browser to reload updated GLB files
+    const basePath = product.glb || '/database/glbs/1.glb';
+    const modelPath = `${basePath}?v=${Date.now()}`;
 
     loader.load(
       modelPath,
@@ -236,7 +238,9 @@ const Product = () => {
     scene.add(fillLight);
 
     const loader = new GLTFLoader();
-    const modelPath = product.glb || '/database/glbs/1.glb';
+    // Add cache-busting query parameter to force browser to reload updated GLB files
+    const basePath = product.glb || '/database/glbs/1.glb';
+    const modelPath = `${basePath}?v=${Date.now()}`;
 
     loader.load(
       modelPath,
