@@ -9,6 +9,7 @@ const View3DSpace = () => {
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [initializedSelection, setInitializedSelection] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [qrTargetUrl, setQrTargetUrl] = useState('');
 
   // Filter to only show products with GLB files (limit to 4)
   const productsWith3D = products
@@ -32,11 +33,23 @@ const View3DSpace = () => {
   };
 
   const handleView3D = () => {
-    // Save selected products and navigate (not fully implemented)
+    // Save selected products locally for same-device usage
     localStorage.setItem(
       'selected_3d_products',
       JSON.stringify(selectedProducts)
     );
+
+    // Build a cross-device AR URL that encodes the selected product IDs
+    try {
+      const idsParam = selectedProducts.join(',');
+      // Use the public base URL for the AR app (ngrok tunnel)
+      const origin = 'https://debasingly-stubborn-january.ngrok-free.dev';
+      const arUrl = `${origin}/ar?ids=${encodeURIComponent(idsParam)}`;
+      setQrTargetUrl(arUrl);
+    } catch {
+      setQrTargetUrl('');
+    }
+
     setShowQR(true);
   };
 
@@ -107,11 +120,20 @@ const View3DSpace = () => {
             >
               Scan this QR code to view your 3D space on another device:
             </p>
-            <img
-              src={qrCode}
-              alt="View 3D space QR code"
-              style={{ maxWidth: '220px', width: '100%', height: 'auto', marginBottom: '16px' }}
-            />
+            {qrTargetUrl && (
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+                  qrTargetUrl
+                )}`}
+                alt="View 3D space QR code"
+                style={{
+                  maxWidth: '220px',
+                  width: '100%',
+                  height: 'auto',
+                  marginBottom: '16px',
+                }}
+              />
+            )}
             <button
               type="button"
               onClick={() => setShowQR(false)}
